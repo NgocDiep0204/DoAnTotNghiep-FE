@@ -26,6 +26,7 @@
         <span class="text-lg font-semibold text-blue-900">DENTAL CLINIC</span>
       </div>
 
+      
       <!-- Menu -->
       <nav class="hidden md:flex items-center gap-x-6 text-gray-700 font-medium text-sm whitespace-nowrap">
         <a href="#" class="hover:text-blue-600">Trang chủ</a>

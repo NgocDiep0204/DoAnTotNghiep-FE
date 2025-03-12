@@ -1,93 +1,50 @@
 <template>
-    <!-- begin hedaer -->
-<div class="containner h-8 mx-auto p-5 w-full">
-  <div class="md:flex md:flex-row md:justify-between text-center">
-      <div class="flex flex-row justify-center">
-          <div class="bg-gradient-to-r from-purple-600 to-red-600 h-8 w-8 rounded-lg"> </div>
-          <h1 class="text-gray-600 text-xl ml-2">VirGo</h1>
+  <header class="w-full">
+  <!-- Thanh trên -->
+  <div class="bg-gray-100 text-gray-600 text-sm py-2">
+    <div class="container mx-auto flex justify-between items-center px-4">
+      <span>099 888 8888 | 096 666 6666</span>
+      <div class="space-x-4">
+        <a href="#" class="hover:text-blue-600">Hỗ trợ</a>
+        <a href="#" class="hover:text-blue-600">Tuyển dụng</a>
+        <a href="#" class="hover:text-blue-600">Liên hệ</a>
+        <a href="#" class="hover:text-blue-600">Đăng nhập</a>
+        <select class="bg-transparent focus:outline-none">
+          <option>Tiếng Việt</option>
+          <option>English</option>
+        </select>
       </div>
-      <div class="mt-2">
-          <router-link :to="{name:'/'}" class=" text-gray-600 hover:text-purple-400 p-4">Home</router-link>
-          <router-link :to="{name:'shop'}" class=" text-gray-600 hover:text-purple-400 p-4">Shop</router-link>
-          <router-link v-if="user" :to="{name: 'cart', params: {id: user.id}}" class=" bg-gradient-to-r from-purple-300 to-pink-300  text-gray-50 hover:text-purple-400 p-1.5 px-4 rounded-full ">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 inline-block">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
-              </svg>
-              Cart
-          </router-link>
-          <router-link v-if="!user" :to="{name:'login'}" class=" text-gray-600 hover:text-purple-400 p-4">Login</router-link>
-              <span v-if="user" @click="toggle" class="text-gray-600 hover:text-purple-400 p-4">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="size-6 inline-block">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0 0 12 15.75a7.488 7.488 0 0 0-5.982 2.975m11.963 0a9 9 0 1 0-11.963 0m11.963 0A8.966 8.966 0 0 1 12 21a8.966 8.966 0 0 1-5.982-2.275M15 9.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-              </svg>
-              <Menu id="overlay_menu" ref="menu" :model="items" :popup="true"></Menu>
-          </span>
-         
-      </div>
+    </div>
   </div>
-</div>
 
+  <!-- Thanh dưới -->
+  <div class="bg-white shadow-sm">
+    <div class="container mx-auto flex justify-between items-center py-4 px-4">
+      <!-- Logo -->
+      <div class="flex items-center space-x-2">
+        <!-- <img src="logo.png" alt="Logo" class="h-10"> -->
+        <span class="text-lg font-semibold text-blue-900">DENTAL CLINIC</span>
+      </div>
 
+      <!-- Menu -->
+      <nav class="hidden md:flex items-center gap-x-6 text-gray-700 font-medium text-sm whitespace-nowrap">
+        <a href="#" class="hover:text-blue-600">Trang chủ</a>
+        <a href="#" class="hover:text-blue-600">Về chúng tôi</a>
+        <a href="#" class="hover:text-blue-600">Dịch vụ</a>
+        <a href="#" class="hover:text-blue-600">Đội ngũ bác sĩ</a>
+        <a href="#" class="hover:text-blue-600">Khách hàng</a>
+        <a href="#" class="hover:text-blue-600">Chuyên gia tư vấn</a>
+        <a href="#" class="hover:text-blue-600">Cửa hàng</a>
+        <a href="#" class="hover:text-blue-600">Kiến thức</a>
+      </nav>
 
-<!-- end header -->
+      <!-- Nút Đặt lịch hẹn -->
+      <button class="bg-blue-600 text-white px-2 py-2 rounded-lg flex items-center space-x-2 hover:bg-blue-700 whitespace-nowrap">
+        <span>📅</span>
+        <span>Đặt lịch hẹn</span>
+      </button>
+    </div>
+  </div>
+</header>
+
 </template>
-
-<script>
-import { mapState, mapActions } from 'vuex';
-export default {
-    components:{
-    },
-    data(){
-        return {
-            value: null,
-            items: [
-                {
-                    label: 'Profile',
-                    icon: 'pi pi-user',
-                    command: () => {
-                        this.$router.push('/profile');
-                    }
-                },
-                {
-                    label: 'Logout',
-                    icon: 'pi pi-sign-out',
-                    command: () => {
-                        this.$router.push('/login');
-                        this.$store.commit('Set_Username', null)
-                        this.$store.commit('Set_User', null)
-                    }
-                }
-            ]
-        };
-    },
-    computed:{
-        ...mapState(['username', 'user']),
-    },
-    watch:{
-        username: {
-            handler(newUserName) {
-                if (newUserName) {
-                    this.GetUser(newUserName);
-                }
-            }
-        }
-    },
-    
-    async created() {
-        if(this.username){
-            await this.GetUser(this.username);
-        }
-    },
-    methods:{
-        ...mapActions(['GetUser']),
-        toggle(event) {
-    if (this.$refs.menu) {
-        this.$refs.menu.toggle(event);
-    } else {
-        console.error('Menu component is not defined.');
-    }
-}
-
-    }
-}
-</script>

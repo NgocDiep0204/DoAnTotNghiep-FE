@@ -9,7 +9,7 @@
           </p>
           <div class="text-sm space-y-2">
             <p>📍 Cầu Giấy, Hà Nội</p>
-            <p>📞 093 186 3366 – 096 361 4566</p>
+            <p>📞099 888 8888 - 096 666 6666</p>
             <p>🕒 08:30 – 18:30 các ngày trong tuần</p>
             <p>📅 Từ thứ 2 – Chủ nhật</p>
           </div>
@@ -33,12 +33,8 @@
         <div>
           <h3 class="font-bold text-lg mb-4">Nha khoa Dental</h3>
           <ul class="space-y-2 text-sm">
-            <li><a href="#" class="hover:underline">Về chúng tôi</a></li>
             <li><a href="#" class="hover:underline">Đội ngũ bác sĩ</a></li>
-            <li><a href="#" class="hover:underline">Cơ sở vật chất</a></li>
-            <li><a href="#" class="hover:underline">Khách hàng</a></li>
-            <li><a href="#" class="hover:underline">Kiến thức nha khoa</a></li>
-            <li><a href="#" class="hover:underline">Tin tức</a></li>
+            <li><a href="#" class="hover:underline">Dịch vụ</a></li>
           </ul>
         </div>
   

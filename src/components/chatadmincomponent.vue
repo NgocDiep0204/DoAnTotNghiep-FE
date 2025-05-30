@@ -1,225 +1,290 @@
 <template>
-  <div class="relative">
+  <div class="flex h-screen">
+    <!-- Toast Notification -->
     <div
-     
-      @click="toggleDropdown"
-      class="cursor-pointer bg-blue-400 text-white p-3 rounded-full shadow-lg hover:bg-blue-500 relative"
+      v-if="toast.visible"
+      class="fixed bottom-5 right-5 bg-gray-800 text-white px-4 py-2 rounded shadow-lg animate-fade-in-out z-50"
     >
-      💬
-      <span
-        v-if="uncount > 0"
-        class="absolute top-0 right-0 bg-red-500 text-white rounded-full text-xs w-5 h-5 flex items-center justify-center"
-      >
-        {{ uncount }}
-      </span>
-    </div>
-    </div>
-    </template>
-    <!-- <div
-      v-if="showDropdown"
-      class="absolute right-0 mt-2 w-80 bg-white border rounded shadow-lg z-50 max-h-[400px] overflow-y-auto"
-    >
-      <ul v-if="Object.keys(messages).length > 0">
-        <li
-          v-for="(chat, senderId) in messages"
-          :key="senderId"
-          class="flex items-center gap-3 p-3 hover:bg-gray-100 cursor-pointer"
-          @click="openChat(senderId)"
-        >
-          <img :src="chat.avatar" class="w-10 h-10 rounded-full object-cover" />
-          <div class="flex-1">
-            <div class="font-semibold truncate">{{ chat.name }}</div>
-            <div class="text-sm text-gray-500 truncate">
-              <span v-if="chat.isYou">Bạn: </span>{{ chat.lastMessage }}
-              <span class="text-xs ml-1">• {{ chat.time }}</span>
-            </div>
-          </div>
-        </li>
-      </ul>
-      <div v-else class="p-4 text-center text-gray-500">
-        Hộp thư trống
-      </div>
+      {{ toast.message }}
     </div>
 
-    <div class="fixed bottom-6 right-[100px] flex gap-4 z-40">
-      <ChatModel
-        v-for="chat in openChats"
-        :key="chat.senderId"
-        :chatUser="chat"
-        :currentUser="useAuth.user"
-        @close="handleCloseChat(chat.senderId)"
-        @send="sendMessage" 
-      />
+    <!-- Contacts Sidebar -->
+    <div class="w-1/4 bg-gray-100 p-4 overflow-y-auto">
+      <h2 class="text-lg font-bold mb-4">Contacts</h2>
+      <ul>
+        <li
+          v-for="user in contacts"
+          :key="user.id"
+          @click="selectUser(user)"
+          :class="['p-2 cursor-pointer rounded hover:bg-gray-300 flex items-center justify-between', selectedUser?.id === user.id ? 'bg-blue-200' : '']"
+        >
+          <span>{{ user.userName || 'Unknown User' }}</span>
+
+          <!-- Chấm đỏ nếu có tin nhắn chưa đọc -->
+          <span
+            v-if="user.unread"
+            class="w-3 h-3 bg-red-600 rounded-full ml-2"
+            title="Tin nhắn mới chưa đọc"
+          ></span>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Chat Section -->
+    <div class="flex-1 flex flex-col">
+      <div class="bg-gray-200 p-4 text-xl font-bold">
+        {{ selectedUser?.userName || 'Select a user to chat' }}
+      </div>
+
+      <div ref="messageList" class="flex-1 p-4 overflow-y-auto space-y-2 flex flex-col">
+        <div
+          v-for="msg in messages"
+          :key="msg.messageId"
+          :class="[
+            'flex flex-col max-w-[70%]',
+            msg.senderId === currentUserId ? 'items-end self-end' : 'items-start self-start'
+          ]"
+        >
+          <div
+            :class="msg.senderId === currentUserId
+              ? 'bg-blue-500 text-white p-2 rounded'
+              : 'bg-gray-300 p-2 rounded'"
+          >
+            {{ msg.text }}
+          </div>
+          <small
+            v-if="msg.senderId === currentUserId"
+            :class="{
+              'text-gray-400': msg.status === 1,
+              'text-yellow-500': msg.status === 0,
+              'text-red-500': msg.status === -1
+            }"
+            class="mt-1 text-xs"
+          >
+            {{
+              msg.status === 1
+                ? 'Đã gửi'
+                : msg.status === 0
+                ? 'Đang gửi...'
+                : 'Lỗi'
+            }}
+          </small>
+        </div>
+      </div>
+
+      <!-- Input -->
+      <div class="p-4 border-t flex">
+        <input
+          v-model="message"
+          @keyup.enter="sendMessage"
+          placeholder="Type a message..."
+          class="flex-1 border border-gray-400 rounded px-4 py-2 mr-2"
+        />
+        <button @click="sendMessage" class="bg-blue-500 text-white px-4 py-2 rounded">
+          Send
+        </button>
+      </div>
     </div>
   </div>
 </template>
 
 <script>
-import { useAuthStore } from '../store/user/authstore'
-import { useChatStore } from '../store/chat'
-import * as signalR from '@microsoft/signalr'
-import axios from 'axios'
-import ChatModel from './chatmodelcomponent.vue'
+import * as signalR from '@microsoft/signalr';
 
 export default {
   data() {
     return {
-      showDropdown: false,
-      messages: {},
-      openChats: [],
+      contacts: [],
+      selectedUser: null,
+      messages: [],
+      message: '',
+      currentUserId: '',
+      token: localStorage.getItem('token'),
       connection: null,
-      uncount: 0
-    }
+      toast: {
+        visible: false,
+        message: ''
+      }
+    };
   },
-  components: {
-    ChatModel
-  },
-  computed: {
-    useAuth() {
-      return useAuthStore()
-    },
-    isAdmin() {
-      return this.useAuth.user?.role === 'Admin'
-    },
-    unreadMessagesCount() {
-      return Object.values(this.messages).reduce(
-        (count, chat) => count + chat.unreadCount,
-        0
-      )
-    }
+  async mounted() {
+    await this.fetchCurrentUser();
+    await this.fetchContacts();
+    this.initSignalR();
   },
   methods: {
-    toggleDropdown() {
-      this.showDropdown = !this.showDropdown
-    },
-    async openChat(senderId) {
-      const chat = this.messages[senderId]
-      if (!chat || this.openChats.some(c => c.senderId === senderId)) return
-
-      const history = await this.fetchChatHistory(senderId)
-
-      this.openChats.push({
-        senderId: chat.senderId,
-        name: chat.name,
-        avatar: chat.avatar,
-        history // 👈 truyền lịch sử vào
-      })
-
-      this.markMessagesAsRead(senderId)
-    },
-    markMessagesAsRead(senderId) {
-      if (this.messages[senderId]) {
-        this.messages[senderId].unreadCount = 0
-      }
-    },
-    handleCloseChat(senderId) {
-      this.openChats = this.openChats.filter(c => c.senderId !== senderId)
-    },
-    sendMessage({ receiverId, content }) {
-      if (this.connection) {
-        this.connection.invoke('SendMessage', { receiverId, content })
-          .catch(err => console.error('Gửi tin nhắn thất bại:', err))
-
-        // Cập nhật tin nhắn vào danh sách ngay lập tức
-        const newMessage = {
-          senderId: this.useAuth.user.userId,
-          receiverId,
-          content,
-          time: new Date().toLocaleTimeString(),
-          isYou: true
-        }
-
-        if (!this.messages[receiverId]) {
-          this.messages[receiverId] = {
-            senderId: receiverId,
-            name: receiverId,
-            avatar: '', // Cập nhật avatar nếu cần
-            lastMessage: content,
-            time: newMessage.time,
-            unreadCount: 0
-          }
-        }
-
-        this.messages[receiverId].lastMessage = content
-        this.messages[receiverId].time = newMessage.time
-      }
-    },
-    async fetchMessages() {
+    async fetchCurrentUser() {
       try {
-        const response = await axios.get('https://localhost:7282/api/chat')
-        const lastMessages = response.data.lastMessages.$values
-        this.uncount = response.data.unreadMessageCount
-
-        if (Array.isArray(lastMessages)) {
-          this.messages = lastMessages.reduce((acc, message) => {
-            const senderId = message.senderId
-            acc[senderId] = {
-              senderId,
-              name: message.thread?.user?.fullName,
-              avatar: message.thread?.user?.imageUrl,
-              lastMessage: message.messageText,
-              time: message.sentAt,
-            }
-            return acc
-          }, {})
-        } else {
-          console.warn('Không có lastMessages hợp lệ:', lastMessages)
-        }
-      } catch (error) {
-        console.error('Lỗi khi fetch messages:', error)
+        const res = await fetch('https://localhost:7282/api/ApplicationUser/GetUserProfile', {
+          headers: { Authorization: `Bearer ${this.token}` }
+        });
+        const data = await res.json();
+        this.currentUserId = data.id;
+      } catch (err) {
+        console.error('Error fetching current user:', err);
       }
     },
-    setupSignalR() {
-      this.connection = new signalR.HubConnectionBuilder()
-        .withUrl(`https://localhost:7282/chathub?access_token=${localStorage.getItem('token')}`)
-        .withAutomaticReconnect()
-        .build()
+    async fetchContacts() {
+      try {
+        const res = await fetch(`https://localhost:7282/api/message/contact/${this.currentUserId}`, {
+          headers: { Authorization: `Bearer ${this.token}` }
+        });
+        const data = await res.json();
+        // Mình map thêm thuộc tính unread mặc định false
+        this.contacts = (data.$values || []).map(user => ({
+          ...user,
+          unread: false
+        }));
+      } catch (err) {
+        console.error('Error fetching contacts:', err);
+      }
+    },
+    async selectUser(user) {
+      this.selectedUser = user;
+      // Reset unread khi chọn contact
+      const index = this.contacts.findIndex(c => c.id === user.id);
+      if (index !== -1) {
+        this.contacts[index].unread = false;
+      }
+      await this.loadMessages(user.id);
+    },
+    async loadMessages(receiverId) {
+      try {
+        const res = await fetch(`https://localhost:7282/api/message/${receiverId}`, {
+          headers: { Authorization: `Bearer ${this.token}` }
+        });
+        const data = await res.json();
+        this.messages = data.$values.map(msg => ({
+          messageId: msg.id,
+          senderId: msg.senderId,
+          receiverId: msg.receiverId,
+          text: msg.content,
+          status: 1,
+          sentAt: msg.sentAt
+        })).sort((a, b) => new Date(a.sentAt) - new Date(b.sentAt));
+        this.scrollToBottom();
+      } catch (err) {
+        console.error('Error loading messages:', err);
+      }
+    },
+    async sendMessage() {
+      if (!this.message.trim() || !this.selectedUser) return;
+      const content = this.message.trim();
+      const receiverId = this.selectedUser.id;
+      this.message = '';
 
-      this.connection.start().catch(err => console.error('Kết nối thất bại:', err))
+      // Tạo tin nhắn local trước khi gửi
+      const tempMessage = {
+        messageId: `local-${Date.now()}`, // ID tạm
+        senderId: this.currentUserId,
+        receiverId: receiverId,
+        text: content,
+        status: 0, // 0: pending
+        sentAt: new Date().toISOString()
+      };
+      this.messages.push(tempMessage);
+      this.scrollToBottom();
+
+      try {
+        await this.connection.invoke('SendMessage', receiverId, content);
+
+        // Cập nhật trạng thái thành "sent" nếu thành công (status = 1)
+        const index = this.messages.findIndex(m => m.messageId === tempMessage.messageId);
+        if (index !== -1) {
+          this.messages[index].status = 1;
+        }
+      } catch (err) {
+        console.error('Error sending message:', err);
+        const index = this.messages.findIndex(m => m.messageId === tempMessage.messageId);
+        if (index !== -1) {
+          this.messages[index].status = -1;
+        }
+      }
+    },
+    initSignalR() {
+      this.connection = new signalR.HubConnectionBuilder()
+        .withUrl('https://localhost:7282/chathub', {
+          accessTokenFactory: () => this.token
+        })
+        .withAutomaticReconnect()
+        .build();
+
+      this.connection.start()
+        .then(() => console.log('✅ Connected to SignalR'))
+        .catch(err => console.error('❌ SignalR connection error:', err));
 
       this.connection.on('ReceiveMessage', (message) => {
-        const senderId = message.senderId
-        const senderName = message.senderName
-        const senderAvatar = message.avatar
-        if (!this.messages[senderId]) {
-          this.messages[senderId] = {
-            senderId,
-            name: senderName,
-            avatar: senderAvatar,
-            lastMessage: message.content,
-            time: 'Vừa xong',
-            unreadCount: 1
+        // Nếu tin nhắn là với người đang chat thì thêm tin nhắn
+        if (message.senderId === this.selectedUser?.id || message.receiverId === this.selectedUser?.id) {
+          this.messages.push({
+            messageId: message.id,
+            senderId: message.senderId,
+            receiverId: message.receiverId,
+            text: message.content,
+            sentAt: message.sentAt,
+            status: 1
+          });
+          this.scrollToBottom();
+
+          // Khi đang chat với user đó => reset unread
+          const idx = this.contacts.findIndex(c => c.id === this.selectedUser?.id);
+          if (idx !== -1) {
+            this.contacts[idx].unread = false;
           }
         } else {
-          this.messages[senderId].lastMessage = message.content
-          this.messages[senderId].time = 'Vừa xong'
-          this.messages[senderId].unreadCount += 1
+          // Nếu tin nhắn từ user khác hoặc không phải đang chat => set unread = true cho contact tương ứng
+          const otherUserId = message.senderId === this.currentUserId ? message.receiverId : message.senderId;
+          const idx = this.contacts.findIndex(c => c.id === otherUserId);
+          if (idx !== -1) {
+            this.contacts[idx].unread = true;
+          } else {
+            // Nếu chưa có trong contacts thì thêm mới với unread = true
+            this.contacts.push({ id: otherUserId, userName: 'New User', unread: true });
+          }
         }
 
-        const isChatOpen = this.openChats.find(c => c.senderId === senderId)
-        if (isChatOpen) {
-          this.messages[senderId].unreadCount = 0
-          this.$refs.chatModel?.forEach(ref => {
-            if (ref.senderId === senderId) {
-              ref.receiveMessage(senderId, message.content)
-            }
-          })
+        // Hiện toast nếu tin nhắn là của người khác (không phải mình)
+        if (message.senderId !== this.currentUserId) {
+          this.showToast(`Tin nhắn mới từ ${this.selectedUser?.userName || 'Người dùng'}`);
         }
-      })
+      });
     },
-    async fetchChatHistory(senderId) {
-      try {
-        const res = await axios.get(`https://localhost:7282/api/chat/messages/${senderId}`)
-        return res.data?.$values || []
-      } catch (err) {
-        console.error('Lỗi lấy lịch sử:', err)
-        return []
-      }
+    scrollToBottom() {
+      this.$nextTick(() => {
+        const el = this.$refs.messageList;
+        if (el) el.scrollTop = el.scrollHeight;
+      });
+    },
+    showToast(msg) {
+      this.toast.message = msg;
+      this.toast.visible = true;
+      setTimeout(() => {
+        this.toast.visible = false;
+      }, 3000);
     }
-  },
-  mounted() {
-    this.fetchMessages()
-    this.setupSignalR()
+  }
+};
+</script>
+
+<style scoped>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+/* Animation toast */
+@keyframes fade-in-out {
+  0%, 100% {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  10%, 90% {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
-</script> -->
+
+.animate-fade-in-out {
+  animation: fade-in-out 3s ease forwards;
+}
+</style>

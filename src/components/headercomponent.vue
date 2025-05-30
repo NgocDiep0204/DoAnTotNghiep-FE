@@ -64,41 +64,33 @@
             <router-link :to="{ name: 'listservice' }" class="hover:text-blue-600">Quản lý dịch vụ</router-link>
             <router-link :to="{ name: 'appoimentmanager' }" class="hover:text-blue-600">Quản lý lịch hẹn </router-link>
             <router-link :to="{ name: 'fulldashboard' }" class="hover:text-blue-600">Báo cáo</router-link>
+            <router-link :to="{ name: 'chatadmincomponent' }" class="hover:text-blue-600">Tin nhắn</router-link>
             <router-link :to="{ name: 'dentistappoiment' }" class="hover:text-blue-600">QL lịch hẹn cá nhân</router-link>
+  
+
 
           </nav>
          
       </div>
-      
-
-        <template v-if="useUser.user">
-  <!-- Nếu là Admin thì hiển thị icon chat trên header -->
-  <!-- <chatadmincomponent
-  v-if="useUser.user?.role === 'Admin'"
-  class="ml-4"
-  :inline="true"
-/> -->
-  <!-- Nếu không phải Admin thì hiển thị nút đặt lịch -->
-  <button
-  
-    class="bg-gradient-to-r from-blue-500 to-blue-950 text-white px-4 py-2 ml-4 rounded-2xl flex items-center space-x-2 hover:bg-blue-700 whitespace-nowrap"
-  >
+      <!-- <chatadmincomponent
+      v-if="useUser.user?.role === 'Admin'"
+      class="ml-4"
+      :inline="true"
+    /> -->
+  <button v-if="useUser.user?.role === 'Admin'"
+    class="bg-gradient-to-r from-blue-500 to-blue-950 text-white px-4 py-2 ml-4 rounded-2xl flex items-center space-x-2 hover:bg-blue-700 whitespace-nowrap">
     <span>📅</span>
     <router-link :to="{ name: 'bookdoctors' }">Đặt lịch hẹn</router-link>
   </button>
-</template>
-
-
-
-
       </div>
     </div>
   </header>
+   
 </template>
 
 <script>
 import { useAuthStore } from '../store/user/authstore';
-import { useServiceStore } from '../store/service.js';
+import chatadmincomponent from './chatadmincomponent.vue';
 import axiosClient from '../axiosClient';
 export default {
   data() {
@@ -109,6 +101,7 @@ export default {
     };
   },
   components: {
+    chatadmincomponent
   },
   computed: {
     useUser() {
@@ -122,7 +115,6 @@ export default {
   async mounted() {
   if(localStorage.getItem('token')){
     await this.useUser.getUser(); 
-    console.log('Role:', this.useUser.user?.role); // ✅ Thêm dòng này
   }
   window.addEventListener('click', this.handleClickOutside);
   },

@@ -22,6 +22,8 @@ import Doctorprofile from '../views/doctorprofile.vue'
 import Servicedetail from '../views/servicedetail.vue'
 import Fulldashboard from '../views/admin/report/fulldashboard.vue'
 import Dentistappoiment from '../views/dentist/dentistappoiment.vue'
+import Chat from '../views/admin/chat.vue'
+import Chatadmincomponent from '../components/chatadmincomponent.vue'
 import t from '../views/test.vue'
 const routes = [
     {
@@ -142,11 +144,18 @@ const routes = [
                 name:'dentistappoiment',    
                 component: Dentistappoiment,
             },
+             {
+                path: '/tin-nhan',
+                name: 'chatadmincomponent',
+                component: Chatadmincomponent
+            },
+            
             {
                 path: '/t',
                 name: 't',
                 component: t
             },
+            
 
         ]
     }

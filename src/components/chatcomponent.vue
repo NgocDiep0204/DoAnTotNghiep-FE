@@ -1,12 +1,30 @@
-<!-- <template>
+<template>
   <div>
+    <!-- Nút mở chat -->
     <button
       @click="toggleChat"
       class="fixed bottom-5 right-5 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700 z-50"
     >
       💬
+      <span
+        v-if="hasNewMessage"
+        class="absolute top-0 right-0 bg-red-500 rounded-full w-3 h-3 animate-ping"
+      ></span>
+      <span
+        v-if="hasNewMessage"
+        class="absolute top-0 right-0 bg-red-500 rounded-full w-2 h-2"
+      ></span>
     </button>
 
+    <!-- Toast thông báo -->
+    <div
+      v-if="toastMessage"
+      class="fixed bottom-28 right-6 bg-gray-900 text-white px-4 py-2 rounded shadow-lg z-50 animate-fade-in-out"
+    >
+      {{ toastMessage }}
+    </div>
+
+    <!-- Khung chat -->
     <transition name="fade">
       <div
         v-if="isOpen"
@@ -25,8 +43,10 @@
                 class="p-2 rounded shadow-sm"
                 :class="msg.senderId === senderId ? 'bg-gray-100' : 'bg-blue-100'"
               >
-                <strong>{{ msg.senderId === senderId ? 'Bạn' : 'Admin' }}:</strong> {{ msg.text }}
-                <div class="text-xs text-gray-400 italic">({{ geStringStatus(msg.status) }})</div>
+                <strong>
+                  {{ msg.senderId === senderId ? 'Bạn' : `Admin (${msg.senderId.slice(0, 4)}...)` }}:
+                </strong> {{ msg.text }}
+                <div class="text-xs text-gray-400 italic">({{ getStatusText(msg.status) }})</div>
               </div>
             </li>
           </ul>
@@ -57,6 +77,7 @@ import jwt_decode from 'jwt-decode';
 import * as signalR from '@microsoft/signalr';
 
 export default {
+  name: 'ChatBox',
   data() {
     return {
       message: '',
@@ -64,7 +85,9 @@ export default {
       connection: null,
       isOpen: false,
       senderId: '',
-      receiverId: 'ADMIN_USER_ID', // Thay bằng ID admin thực tế
+      receiverId: [],
+      hasNewMessage: false,
+      toastMessage: ''
     };
   },
   computed: {
@@ -76,16 +99,28 @@ export default {
     }
   },
   methods: {
-    geStringStatus(status) {
+    getStatusText(status) {
       switch (status) {
         case 1: return 'Đã gửi';
-        case 2: return 'Đang gửi';
+        case 2: return 'Đang gửi...';
         case 3: return 'Đã đọc';
+        case -1: return 'Lỗi';
         default: return 'Không xác định';
+      }
+    },
+    async fetchAdminId() {
+      try {
+        const response = await this.useAuth.getUserByRole('Admin');
+        this.receiverId = response.map(i => i.id);
+      } catch (error) {
+        console.error('Lỗi khi lấy Admin:', error);
       }
     },
     toggleChat() {
       this.isOpen = !this.isOpen;
+      if (this.isOpen) {
+        this.hasNewMessage = false;
+      }
       this.$nextTick(() => this.scrollToBottom());
     },
     scrollToBottom() {
@@ -96,35 +131,80 @@ export default {
       if (!this.message.trim()) return;
 
       const text = this.message.trim();
-
-      // Push tin nhắn tạm thời với trạng thái "Đang gửi"
-      const tempMsg = {
-        messageId: `temp-${Date.now()}`,
+      const tempMessages = this.receiverId.map((id) => ({
+        messageId: `temp-${Date.now()}-${id}`,
         senderId: this.senderId,
+        receiverId: id,
         text,
-        status: 2 // Đang gửi
-      };
-      this.messages.push(tempMsg);
+        status: 2
+      }));
+
+      this.messages.push(...tempMessages);
       this.message = '';
       this.scrollToBottom();
 
+      for (const id of this.receiverId) {
+        try {
+          await this.connection.invoke('SendMessage', id, text);
+
+          await fetch('https://localhost:7282/api/message', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${this.token}`
+            },
+            body: JSON.stringify({
+              receiverId: id,
+              content: text
+            })
+          });
+
+          const msg = this.messages.find(m => m.receiverId === id && m.status === 2);
+          if (msg) msg.status = 1;
+
+        } catch (err) {
+          console.error(`❌ Lỗi khi gửi cho ${id}:`, err);
+          const msg = this.messages.find(m => m.receiverId === id && m.status === 2);
+          if (msg) msg.status = -1;
+        }
+      }
+    },
+    async fetchOldMessages() {
       try {
-        console.log('📤 Đang gửi tin nhắn...', this.useAuth.user.role);
-        await this.connection.invoke('SendMessage', text, this.useAuth.user.role);
-        console.log('✅ Đã gửi tin nhắn');
-        // Cập nhật tin nhắn tạm thời thành "Đã gửi"
-        //tempMsg.status = 1;
+        const allMessages = [];
+        for (const id of this.receiverId) {
+          const res = await fetch(`https://localhost:7282/api/message/${id}`, {
+            headers: {
+              'Authorization': `Bearer ${this.token}`
+            }
+          });
+
+          if (!res.ok) continue;
+
+          const data = await res.json();
+          const msgs = data.$values.map(msg => ({
+            messageId: msg.id,
+            senderId: msg.senderId,
+            receiverId: msg.receiverId,
+            text: msg.content,
+            status: 1,
+            sentAt: msg.sentAt
+          }));
+
+          allMessages.push(...msgs);
+        }
+
+        this.messages = allMessages.sort((a, b) => new Date(a.sentAt) - new Date(b.sentAt));
+        this.scrollToBottom();
       } catch (err) {
-        console.error('❌ Lỗi khi gửi:', err);
-        // Cập nhật tin nhắn tạm thời thành "Lỗi"
-        tempMsg.status = -1;
+        console.error('❌ Lỗi khi tải tin nhắn:', err);
       }
     },
     setupConnection(userId) {
       this.senderId = userId;
 
       this.connection = new signalR.HubConnectionBuilder()
-        .withUrl(`https://localhost:7282/chathub`, {
+        .withUrl('https://localhost:7282/chathub', {
           accessTokenFactory: () => this.token
         })
         .withAutomaticReconnect()
@@ -132,45 +212,47 @@ export default {
 
       this.connection.on('ReceiveMessage', (message) => {
         this.messages.push({
-          messageId: `msg-${Date.now()}`,
-          senderId: message.senderRole === 'User' ? this.senderId : 'admin',
+          messageId: message.id,
+          senderId: message.senderId,
+          receiverId: message.receiverId,
           text: message.content,
-          status: 1, // Đã gửi
+          status: 1,
           sentAt: message.sentAt
         });
+
+        if (!this.isOpen) {
+          this.hasNewMessage = true;
+          this.toastMessage = `Tin nhắn từ Admin: ${message.content}`;
+          setTimeout(() => {
+            this.toastMessage = '';
+          }, 3000);
+        }
+
         this.scrollToBottom();
       });
 
       this.connection.start()
-        .then(() => {
-          console.log('✅ Đã kết nối với ChatHub');
-        })
-        .catch(err => {
-          console.error('❌ Không thể kết nối:', err);
-        });
-    }
-  },
-  watch: {
-    messages() {
-      this.scrollToBottom();
+        .then(() => console.log('✅ Kết nối ChatHub thành công'))
+        .catch(err => console.error('❌ Lỗi kết nối ChatHub:', err));
     }
   },
   async mounted() {
     try {
       await this.useAuth.getUser();
-      const userIdFromStore = this.useAuth.user.id;
+      let senderId = this.useAuth.user.id;
 
-      let senderId = userIdFromStore;
       if (this.token) {
         try {
           const decoded = jwt_decode(this.token);
           senderId = decoded.sub || senderId;
         } catch (e) {
-          console.warn('⚠️ Không thể decode token');
+          console.warn('⚠️ Không thể giải mã token');
         }
       }
 
+      await this.fetchAdminId();
       this.setupConnection(senderId);
+      await this.fetchOldMessages();
     } catch (err) {
       console.error('❌ Lỗi khi khởi tạo:', err);
     }
@@ -181,5 +263,24 @@ export default {
     }
   }
 };
-</script> -->
-<template></template>
+</script>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+
+@keyframes fade-in-out {
+  0% { opacity: 0; transform: translateY(10px); }
+  10% { opacity: 1; transform: translateY(0); }
+  90% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-10px); }
+}
+
+.animate-fade-in-out {
+  animation: fade-in-out 3s ease forwards;
+}
+</style>

@@ -42,7 +42,7 @@ export const useDentistStore = defineStore('dentist', {
             try {
                 const response = await axiosClient.post('Dentist/CreateDentist', dentist)
                 this.dentists.push(response.data)
-                return response.data
+                return true
             } catch (error) {
                 console.error('Error adding dentist:', error)
             }

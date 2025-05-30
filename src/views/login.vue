@@ -64,7 +64,7 @@ export default {
               console.error('Login error:', error.response.data);
               if (error.response.status === 404) {
                   alert('Email không tồn tại. Vui lòng kiểm tra lại.');
-              } else  if (error.response.status === 401) {
+              } else  if (error.response.status === 409) {
                   alert('Mật khẩu không đúng.');
               }else  if (error.response.status === 403) {
                   alert('Tài khoản của bạn đã bị khóa.');

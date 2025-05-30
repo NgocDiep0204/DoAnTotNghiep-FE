@@ -42,6 +42,32 @@ export const useAuthStore = defineStore('auth', {
         }
       }
     },
+    async Logout() {
+  try {
+    const response = await axiosClient.post(`Authentication/Logout`);
+    console.log("Logout response:", response); 
+    if (response.status === 200) {
+      localStorage.removeItem('token');  
+    }
+  } catch {
+    console.log('Logout failed');
+  }
+},
+    async getAllUser(){
+      try {
+        const response = await axiosClient.get('ApplicationUser/GetAllUsers');
+        if (response.status === 200) {
+          console.log("Danh sách người dùng:", response.data.$values); // Debug
+          return response.data.$values; // Trả về danh sách người dùng
+        } else {
+          console.error("Lỗi lấy danh sách người dùng:", response.data.StatusMessage);
+          return null;
+        }
+      } catch (error) {
+        console.error("Error fetching user list:", error);
+        return null;
+      }
+    },
 
     async getUser(){
       try {
@@ -67,7 +93,30 @@ export const useAuthStore = defineStore('auth', {
       try {
         const response = await axiosClient.put(`ApplicationUser/UpdateUserProfile`, formData);
         if (response.status === 200) {
-          // Gọi lại userStore.getUserById nếu bạn có
+          return true;
+        } else {
+          console.error("Lỗi cập nhật:", response.data.StatusMessage);
+          return false;
+        }
+      } catch (error) {
+        console.error("Error updating profile:", error);
+        return false;
+      }
+    },
+    async UpdateUserProfiles(updadeuser, email){
+      const formData = new FormData();
+      formData.append("fullName", updadeuser.fullName);
+      formData.append("gender", updadeuser.gender); 
+      if (updadeuser.file) {
+        formData.append("FormFile", updadeuser.file); 
+      }
+      console.log("FormData:", updadeuser); 
+      for (let [key, value] of formData.entries()) {
+        console.log(`${key}:`, value);
+      }
+      try {
+        const response = await axiosClient.put(`ApplicationUser/UpdateUserProfiles?email=${email}`, formData);
+        if (response.status === 200) {
           return true;
         } else {
           console.error("Lỗi cập nhật:", response.data.StatusMessage);
@@ -222,15 +271,21 @@ export const useAuthStore = defineStore('auth', {
     async deleteUser(id){
       try {
         const response = await axiosClient.delete(`ApplicationUser/DeleteUser?id=${id}`);
-        if (response.status === 200) {
+        if( response.status === 200) {
           return true;
-        } else {
-          console.error("Lỗi xóa người dùng:", response.data.StatusMessage);
-          return false;
         }
       } catch (error) {
-        console.error("Error deleting user:", error);
-        return false;
+        if (error.response) {
+          console.error("Lỗi khi xác minh OTP:", error.response);
+    
+          if (error.response.status === 400) {
+            return { success: false, message: "Không tìm thấy người dùng" };
+          } else if (error.response.status === 500) {
+            return { success: false, message: "Không thể xóa người dùng vì liên quan đến dữ liệu khác" };
+          }
+        }
+    
+        return { success: false, message: "Lỗi không xác định khi xác minh OTP" };
       }
     }
     

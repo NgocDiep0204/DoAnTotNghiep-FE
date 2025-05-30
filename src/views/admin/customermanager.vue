@@ -1,26 +1,32 @@
 <template>
-   <div v-if="authStore.user?.role !=='Admin'">
-      <notrolecomponent />
-    </div>
-    
+  <div v-if="authStore.user?.role !== 'Admin'">
+    <notrolecomponent />
+  </div>
+
   <div v-else class="p-4">
+    <div class="flex justify-end mb-4">
+  <button @click="showCreateModal = true" class="px-4 py-2 bg-green-600 text-white rounded">+ Thêm tài khoản</button>
+    </div>
     <SearchBar v-model:search="search" @refresh="handleRefresh" />
+
+    
+
     <!-- Table -->
     <table class="w-full table-auto border border-collapse border-gray-300">
       <thead class="bg-gray-100 text-left">
         <tr class="bg-gray-200">
           <th class="p-3 border border-gray-300">Họ và tên</th>
           <th class="p-3 border border-gray-300">Email</th>
-          <th class="p-3 border border-gray-300">Quyền</th>
+          <th class="p-3 border border-gray-300">Vai trò</th>
           <th class="p-3 border border-gray-300">Trạng thái</th>
           <th class="p-3 border border-gray-300">Hành động</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="user in paginatedUsers" :key="user.id" class="border-t">
-         <td class="p-3 border border-gray-300">{{ user.fullName }}</td>
-         <td class="p-3 border border-gray-300">{{ user.email }}</td>
-         <td class="p-3 border border-gray-300">{{ user.roles }}</td>
+          <td class="p-3 border border-gray-300">{{ user.fullName }}</td>
+          <td class="p-3 border border-gray-300">{{ user.email }}</td>
+          <td class="p-3 border border-gray-300">{{ returnString(user.roles) }}</td>
           <td class="p-3 border border-gray-300" :class="user.status === 0 ? 'text-green-600 font-semibold' : 'text-red-600 font-semibold'">
             {{ user.status === 0 ? 'Hoạt động' : 'Không hoạt động' }}
           </td>
@@ -50,14 +56,13 @@
             <input v-model="editForm.email" class="w-full border rounded px-3 py-2" required readonly />
           </div>
           <div class="mb-3">
-            <label class="block mb-1">Quyền</label>
+            <label class="block mb-1">Vai trò</label>
             <select v-model="editForm.roles" class="w-full border rounded px-3 py-2">
-              <option value="User">User</option>
+              <option value="User">Bệnh nhân</option>
               <option value="Admin">Admin</option>
-              <option value="Dentist">Dentist</option>
+              <option value="Dentist">Nha Sĩ</option>
             </select>
           </div>
-
           <div class="mb-3">
             <label class="block mb-1">Trạng thái</label>
             <select v-model="editForm.status" class="w-full border rounded px-3 py-2">
@@ -73,9 +78,9 @@
       </div>
     </div>
     <Customerdetail v-if="showDetail" :user="selectedUser" @close="closeDetail" />
+    <usercreateform v-if="showCreateModal" @close="showCreateModal = false" @created="handleUserCreated" />
   </div>
 </template>
-
 <script>
 import Pagination from '../../components/paginationcomponent.vue'
 import SearchBar from '../../components/searchbar.vue'
@@ -83,13 +88,14 @@ import notrolecomponent from '../../components/notrolecomponent.vue'
 import { useAuthStore } from '../../store/user/authstore'
 import Customerdetail from './customerdetail.vue'
 import { useDentistStore } from '../../store/dentist'
-
+import usercreateform from './usercreateform.vue'
 export default {
   components: {
     Pagination,
     SearchBar,
     Customerdetail,
-    notrolecomponent
+    notrolecomponent,
+    usercreateform
   },
   data() {
     return {
@@ -100,12 +106,19 @@ export default {
       selectedUser: null,
       showDetail: false,
       showEditModal: false,
+      showCreateModal: false,
       editForm: {
         id: null,
         fullName: '',
         email: '',
         roles: '',
         status: 0
+      },
+      createForm: {
+        fullName: '',
+        email: '',
+        password: '',
+        roles: 'User'
       }
     }
   },
@@ -130,12 +143,21 @@ export default {
     }
   },
   methods: {
+    returnString(str){
+      if(str == 'Dentist'){
+        return 'Nha sĩ'
+      } else if(str == 'Admin'){
+        return 'Quản trị viên'
+      } else if(str == 'User'){
+        return 'Bệnh nhân'
+      }
+    },
     handleRefresh() {
       this.fetchUsers()
       this.search = ''
     },
     async fetchUsers() {
-      const res = await this.authStore.getUserByRole("User")
+      const res = await this.authStore.getAllUser()
       this.users = res || []
       this.currentPage = 1
     },
@@ -184,15 +206,38 @@ export default {
         alert("Cập nhật thành công")
         this.showEditModal = false
         this.fetchUsers()
-
       } catch (error) {
         console.error("Update failed", error)
       }
     },
     async deleteUser(userId) {
       if (confirm("Bạn có chắc chắn muốn xóa người dùng này không?")) {
-        await this.authStore.deleteUser(userId)
+       var res =  await this.authStore.deleteUser(userId)
+       if(res === true) {
+          alert("Xóa người dùng thành công")
+        } else {
+          alert(res.message)
+          return
+        }
         this.fetchUsers()
+      }
+    },
+     async handleUserCreated(newUserData) {
+      try {
+        await this.authStore.register({
+          email: newUserData.email,
+          password: newUserData.password,
+          fullName: newUserData.fullName,
+          role: newUserData.role
+        }).then(async (res) => {
+          this.authStore.updateUserProfile()
+          
+        })
+        alert("Tạo tài khoản thành công")
+        this.showCreateModal = false
+        this.fetchUsers()
+      } catch (error) {
+        console.error("Tạo tài khoản thất bại", error)
       }
     }
   },
@@ -201,3 +246,4 @@ export default {
   }
 }
 </script>
+`

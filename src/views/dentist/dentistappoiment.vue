@@ -18,6 +18,7 @@ import Dashboard from './dashboard.vue'
 import AppointmentManager from './appointmentmanager.vue'
 import Profile from './profile.vue'
 import Patient from './patient.vue'
+import workschedule from './workschedule.vue'
 import notrolecomponent from '../../components/notrolecomponent.vue'
 import { useAuthStore } from '../../store/user/authstore'
 
@@ -28,7 +29,8 @@ export default {
     AppointmentManager,
     Profile,
     Patient,
-    notrolecomponent
+    notrolecomponent,
+    workschedule
   },
   data() {
     return {
@@ -37,6 +39,7 @@ export default {
         { name: 'Dashboard', label: 'Trang chủ' },
         { name: 'AppointmentManager', label: 'Lịch hẹn' },
         { name: 'Patient', label: 'Quản lý bệnh nhân' },
+        { name: 'workschedule', label: 'Lịch làm việc' },
         { name: 'Profile', label: 'Thông tin cá nhân' },
       ]
     }

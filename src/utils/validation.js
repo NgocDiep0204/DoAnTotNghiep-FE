@@ -11,3 +11,6 @@ export const isStrongPassword = (password) => {
   return regex.test(password)
 }
   
+export const isValidFullNameLength = (name) => {
+  return name.length >= 6 && name.length <= 255
+}

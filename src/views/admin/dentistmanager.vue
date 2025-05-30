@@ -92,18 +92,21 @@ export default {
     useUser() {
       return useAuthStore()
     },
-    filteredDentists() {
-      const keyword = this.search.toLowerCase()
-      if (!keyword) return this.dentists
-      return this.dentists.filter(dentist =>
-        dentist.user?.fullName.toLowerCase().includes(keyword) ||
-        dentist.user?.email.toLowerCase().includes(keyword) 
-      )
-    },
-    paginatedDentists() {
-      const start = (this.currentPage - 1) * this.pageSize
-      return this.filteredDentists.slice(start, start + this.pageSize)
-    },
+   filteredDentists() {
+  if (!Array.isArray(this.dentists)) return []
+  const keyword = this.search.toLowerCase()
+  if (!keyword) return this.dentists
+  return this.dentists.filter(dentist =>
+    dentist.user?.fullName?.toLowerCase().includes(keyword) ||
+    dentist.user?.email?.toLowerCase().includes(keyword)
+  )
+},
+   paginatedDentists() {
+  const start = (this.currentPage - 1) * this.pageSize
+  return Array.isArray(this.filteredDentists)
+    ? this.filteredDentists.slice(start, start + this.pageSize)
+    : []
+},
     totalPages() {
       return Math.ceil(this.filteredDentists.length / this.pageSize)
     }
@@ -112,7 +115,7 @@ export default {
     async fetchDentists() {
       const res = await this.dentistStore.getdentists()
       this.dentists = res
-      this.currentPage = 1   // reset về page 1 mỗi lần fetch mới
+      this.currentPage = 1  
     },
     handleRefresh(){
       this.fetchDentists()

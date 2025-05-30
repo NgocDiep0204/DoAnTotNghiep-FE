@@ -219,44 +219,64 @@
       this.currentPage = newPage;
     },
     async click(id, status, email) {
-    const appointment = this.appointments.find(a => a.appointmentId === id);
-    if (!appointment) {
-      alert("Không tìm thấy lịch hẹn.");
-      return;
-    }
+  const appointmentIndex = this.appointments.findIndex(a => a.appointmentId === id);
+  const appointment = this.appointments[appointmentIndex];
 
-    if (appointment.status === 3) {
-      alert("Lịch hẹn đã bị hủy, không thể thay đổi trạng thái.");
-      return;
-    }
-    if (appointment.status === 1) {
-      alert("Lịch hẹn đã được xác nhận!");
-      return;
-    }
+  if (!appointment) {
+    alert("Không tìm thấy lịch hẹn.");
+    return;
+  }
 
-    if (appointment.status === 2) {
-      alert("Lịch hẹn đã hoàn thành, không thể thay đổi trạng thái.");
-      return;
-    }
+  if (appointment.status === 3) {
+    alert("Lịch hẹn đã bị hủy, không thể thay đổi trạng thái.");
+    return;
+  }
+  if (appointment.status === 1) {
+    alert("Lịch hẹn đã được xác nhận!");
+    return;
+  }
+  if (appointment.status === 2) {
+    alert("Lịch hẹn đã hoàn thành, không thể thay đổi trạng thái.");
+    return;
+  }
 
-     const dentistId = appointment.dentistId; // Lấy dentistId nếu có
+  const dentistId = appointment.dentistId;
 
-    if (!dentistId) {
-      alert("Vui lòng chọn nha sĩ trước khi xác nhận lịch hẹn.");
-      return;
-    }
+  if (!dentistId) {
+    alert("Vui lòng chọn nha sĩ trước khi xác nhận lịch hẹn.");
+    return;
+  }
 
-    const update = {
-      appointmentId: id,
-      dentistId: dentistId,
-      status: status,
-    };
+  const update = {
+    appointmentId: id,
+    dentistId: dentistId,
+    status: status,
+  };
 
-     const emailType = status === 1 ? 0 : 1;
+  const emailType = status === 1 ? 0 : 1;
 
   const res = await this.useService.updateAppointment(update);
   if (res) {
-    await this.fetchAppointments();
+    // ✅ Cập nhật trực tiếp status trong `appointments`
+    appointment.status = status;
+
+    // ✅ Cập nhật lại trong `filteredResults`
+    const isMatchFilter = (this.selectedStatus === null || status === this.selectedStatus);
+
+    const filteredIndex = this.filteredResults.findIndex(a => a.appointmentId === id);
+
+    if (isMatchFilter) {
+      if (filteredIndex !== -1) {
+        this.filteredResults[filteredIndex].status = status;
+      } else {
+        this.filteredResults.unshift(appointment); // nếu chưa có thì thêm mới
+      }
+    } else {
+      if (filteredIndex !== -1) {
+        this.filteredResults.splice(filteredIndex, 1); // nếu không match thì loại bỏ
+      }
+    }
+
     const mailSent = await this.useService.sendMailToUser(email, id, emailType);
     if (mailSent) {
       alert("Cập nhật trạng thái thành công và đã gửi mail cho khách hàng");

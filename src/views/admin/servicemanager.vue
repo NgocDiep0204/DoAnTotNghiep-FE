@@ -14,14 +14,7 @@
           class="input"
           :disabled="loading"
         />
-        <input
-          v-model.number="form.duration"
-          placeholder="Thời gian (phút)"
-          type="number"
-          min="1"
-          class="input"
-          :disabled="loading"
-        />
+
         <select v-model="form.status" class="input" :disabled="loading">
           <option :value="0">Không hoạt động</option>
           <option :value="1">Hoạt động</option>
@@ -99,7 +92,6 @@
         <tbody>
           <tr v-for="svc in paginatedServices" :key="svc.serviceId" class="border-b">
             <td class="p-2">{{ svc.serviceName }}</td>
-            <td class="p-2 text-center">{{ svc.duration }} phút</td>
             <td class="p-2 text-center">
               <span :class="svc.status === 1 ? 'text-green-600' : 'text-red-600'">
                 {{ svc.status === 1 ? 'Hoạt động' : 'Ẩn' }}
@@ -172,9 +164,7 @@ export default {
         serviceName: '',
         serviceDescription: '',
         benefit: '',
-        price: 0,
         status: 1,
-        duration: '',
         imgService: '',
       },
       imageFile: null,
@@ -230,9 +220,7 @@ export default {
         serviceName: '',
         serviceDescription: '',
         benefit: '',
-        price: 0,
         status: 1,
-        duration: '',
         imgService: '',
       }
       this.imageFile = null
@@ -241,8 +229,8 @@ export default {
     },
 
     async handleSubmit() {
-      if (!this.form.serviceName || !this.form.duration) {
-        alert('Vui lòng điền đầy đủ tên dịch vụ và thời gian!')
+      if (!this.form.serviceName || !this.imageFile) {
+        alert('Vui lòng điền đầy đủ tên dịch vụ và ảnh dịch vụ')
         return
       }
       this.loading = true
@@ -252,9 +240,7 @@ export default {
         formData.append('ServiceName', this.form.serviceName)
         formData.append('ServiceDescription', this.form.serviceDescription)
         formData.append('Benefit', this.form.benefit)
-        formData.append('Price', this.form.price)
         formData.append('Status', this.form.status)
-        formData.append('Duration', this.form.duration)
 
         if (this.imageFile) {
           formData.append('FormFile', this.imageFile)
@@ -285,9 +271,7 @@ export default {
         serviceName: svc.serviceName,
         serviceDescription: svc.serviceDescription,
         benefit: svc.benefit,
-        price: svc.price,
         status: svc.status,
-        duration: svc.duration,
         imgService: svc.imgService,
       }
     },

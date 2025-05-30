@@ -188,7 +188,12 @@ const handleSubmit = async () => {
         
         if (res === true) {
           formCeate.userId = authStore.userId
-          await dentistStore.adddentist(formCeate)
+          var adddentist = await dentistStore.adddentist(formCeate)
+          if (adddentist === true) {
+            alert('Thêm nha sĩ thành công')
+          } else {
+            return
+          }
         } else {
           alert(res.message)
           return

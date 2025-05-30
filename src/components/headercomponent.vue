@@ -105,6 +105,7 @@ export default {
     return {
       img: "/src/assets/img/niengrang.jpg",
       showMenu: false,
+      token: "",
     };
   },
   components: {
@@ -113,6 +114,7 @@ export default {
     useUser() {
       return useAuthStore();
     },
+
     isLoggedIn() {
       return this.useUser.user;
     }
@@ -155,7 +157,7 @@ export default {
     },
     async logout() {
       try{
-        const response = await axiosClient.post('Authentication/Logout');
+        const response = await axiosClient.post(`Authentication/Logout`);
         if(response.status === 200) {
           this.useUser.removeToken(localStorage.getItem('token')); 
           this.$router.push('/dang-nhap').then(() => {

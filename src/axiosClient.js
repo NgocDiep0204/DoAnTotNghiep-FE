@@ -1,8 +1,7 @@
 import axios from 'axios';
-import router from './router';
 
 const axiosClient = axios.create({
-  baseURL: 'https://localhost:7282/api/', 
+  baseURL: 'https://localhost:7282/api/',
 });
 
 axiosClient.interceptors.request.use((config) => {
@@ -14,4 +13,24 @@ axiosClient.interceptors.request.use((config) => {
 }, (error) => {
   return Promise.reject(error);
 });
+
+let isLoggingOut = false;
+
+axiosClient.interceptors.response.use(
+  response => response,
+  error => {
+    if (error.response && error.response.status === 401 && !isLoggingOut) {
+      isLoggingOut = true;
+
+      alert('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+
+      localStorage.removeItem('token'); // chỉ xóa token
+
+      // Redirect về login, không cần reload nữa
+      window.location.href = '/dang-nhap';
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default axiosClient;

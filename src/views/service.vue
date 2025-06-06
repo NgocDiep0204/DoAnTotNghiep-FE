@@ -11,7 +11,7 @@
   <img
     :src="service.imgService"
     alt="Ảnh dịch vụ"
-    class="w-full h-full object-cover"
+    class="w-[60%] h-full object-cover"
   />
 </div>
 

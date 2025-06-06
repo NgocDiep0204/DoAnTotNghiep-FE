@@ -59,7 +59,7 @@
 
           
           <nav v-else class="hidden md:flex gap-x-6 text-gray-700 font-medium text-sm whitespace-nowrap justify-self-start">
-            <router-link :to="{ name: 'customermanager' }" class="hover:text-blue-600">Quản lý khách hàng</router-link>
+            <router-link :to="{ name: 'customermanager' }" class="hover:text-blue-600">Quản lý tài khoản</router-link>
             <router-link :to="{ name: 'dentistmanager' }" class="hover:text-blue-600">Quản lý nha sĩ</router-link>
             <router-link :to="{ name: 'listservice' }" class="hover:text-blue-600">Quản lý dịch vụ</router-link>
             <router-link :to="{ name: 'appoimentmanager' }" class="hover:text-blue-600">Quản lý lịch hẹn </router-link>
@@ -77,7 +77,7 @@
       class="ml-4"
       :inline="true"
     /> -->
-  <button v-if="useUser.user?.role === 'Admin'"
+  <button v-if="useUser.user?.role === 'User'"
     class="bg-gradient-to-r from-blue-500 to-blue-950 text-white px-4 py-2 ml-4 rounded-2xl flex items-center space-x-2 hover:bg-blue-700 whitespace-nowrap">
     <span>📅</span>
     <router-link :to="{ name: 'bookdoctors' }">Đặt lịch hẹn</router-link>

@@ -38,14 +38,39 @@ export const useDentistStore = defineStore('dentist', {
                 console.error('Error fetching dentists by status:', error)
             }
         },
+        async getAppointmentBydentist(id){
+            try {
+                const response = await axiosClient.get(`Dentist/GetAppointmentsByDentist?dentistId=${id}`)
+                return response.data.$values
+            } catch (error) {
+                console.error('Error fetching appointments by dentist:', error)
+            }
+        },
+        async getDentistByUserId(userId){
+            try {
+                const response = await axiosClient.get(`Dentist/GetDentistsByUser?id=${userId}`)
+                return response.data
+            } catch (error) {
+                console.error('Error fetching dentist by user ID:', error)
+            }
+        },
         async adddentist(dentist){
             try {
                 const response = await axiosClient.post('Dentist/CreateDentist', dentist)
-                this.dentists.push(response.data)
-                return true
-            } catch (error) {
-                console.error('Error adding dentist:', error)
-            }
+                if( response.status === 200){
+                    return true
+                }
+                
+            }catch (error) {
+        if (error.response) {
+    
+          if (error.response.status === 500) {
+            return { success: false, message: "Người dùng này đã được thêm mới rồi! Vui lòng chọn giá trị khác" };
+          } 
+        }
+    
+        return { success: false, message: "Lỗi không xác định khi xác minh OTP" };
+      }
         },
         async updatedentist(dentist){
             try {
@@ -54,7 +79,7 @@ export const useDentistStore = defineStore('dentist', {
                 if (index !== -1) {
                     this.dentists[index] = response.data
                 }
-                return response.data
+                return true
             } catch (error) {
                 console.error('Error updating dentist:', error)
             }
@@ -63,11 +88,18 @@ export const useDentistStore = defineStore('dentist', {
             try {
                 const response = await axiosClient.delete(`Dentist/DeleteDentist?id=${id}&userId=${userId}`)
                 this.dentists = this.dentists.filter(dentist => dentist.id !== id)
-                return response.data
+                return true
             } catch (error) {
-                console.error('Error deleting dentist:', error)
-            }
+                if (error.response) {
+    
+          if (error.response.status === 500) {
+            return { success: false, message: "Nha sĩ này có liên quan đến dữ liệu khác, không được xóa!" };
+          } 
         }
+    
+        return { success: false, message: "Lỗi không xác định khi xác minh " };
+      }
+        },
 
         
     }

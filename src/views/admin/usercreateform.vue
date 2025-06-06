@@ -1,7 +1,10 @@
 <template>
   <div class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4">
     <div class="bg-white rounded-lg shadow-lg w-full max-w-4xl max-h-[80vh] p-6 overflow-y-auto">
-      <h2 class="text-2xl font-semibold mb-6 text-center">Thêm tài khoản mới</h2>
+      <h2 class="text-2xl font-semibold mb-6 text-center">
+        {{ user ? 'Chỉnh sửa tài khoản' : 'Thêm tài khoản mới' }}
+      </h2>
+
       <form @submit.prevent="submitCreate" class="grid grid-cols-2 gap-8">
         <!-- Left Column -->
         <div class="space-y-5">
@@ -33,19 +36,20 @@
             <p v-if="errors.email" class="text-red-500 text-sm mt-1">{{ errors.email }}</p>
           </div>
 
-          <div>
+          <div v-if="!user">
             <input
-                v-model="form.password"
-                type="password"
-                placeholder="Mật khẩu"
-                required
-                :class="[
+              v-model="form.password"
+              type="password"
+              placeholder="Mật khẩu"
+              required
+              :class="[
                 'w-full border rounded-md px-4 py-2 focus:outline-none',
                 errors.password ? 'border-red-500 focus:ring-red-400' : 'border-gray-300 focus:ring-green-400'
-                ]"
+              ]"
             />
             <p v-if="errors.password" class="text-red-500 text-sm mt-1">{{ errors.password }}</p>
           </div>
+
           <div>
             <select
             v-model="formupdate.gender"
@@ -58,6 +62,19 @@
             <option value="Khác">Khác</option>
           </select>
           </div>
+
+          <div v-if="user">
+            <select
+            v-model="status"
+            required
+            class="w-full border border-gray-300 rounded-md px-4 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-green-400"
+          >
+            <option disabled value="">Chọn trạng thái</option>
+            <option value="0">Hoạt động</option>
+            <option value="1">Không hoạt động</option>
+          </select>
+          </div>
+
           <div>
            <select
                 v-model="form.role"
@@ -119,8 +136,8 @@
             :disabled="isSubmitting"
             class="px-6 py-2 rounded-md bg-green-600 text-white hover:bg-green-700 transition-colors disabled:opacity-50"
             >
-            <span v-if="isSubmitting">Đang tạo...</span>
-            <span v-else>Tạo</span>
+            <span v-if="isSubmitting">Đang lưu...</span>
+            <span v-else>Lưu</span>
             </button>
 
             <!-- Nút "Hủy" chỉ hiển thị khi không đang submit -->
@@ -143,6 +160,13 @@ import { useAuthStore } from '../../store/user/authstore'
 import { isValidFullNameLength, isStrongPassword, isValidEmail } from '../../utils/validation'
 export default {
   emits: ['close', 'created'],
+  props: {
+  user: {
+    type: Object,
+    default: null
+  }
+},
+
   data() {
     return {
       form: {
@@ -163,6 +187,7 @@ export default {
         },
       imagePreview: null,
       isSubmitting: false, 
+      status: '',
     }
   },
   computed: {
@@ -170,6 +195,22 @@ export default {
       return useAuthStore()
     }
   },
+  watch: {
+  user: {
+    immediate: true,
+    handler(user) {
+      if (user) {
+        this.form.fullName = user.fullName || ''
+        this.form.email = user.email || ''
+        this.form.password = ''  // không để mật khẩu cũ
+        this.form.role = user.roles || ''
+        this.status = user.status
+        this.formupdate.gender = user.gender || ''
+        this.imagePreview = user.imageUrl || null
+      }
+    }
+  }
+},
   methods: {
     validateForm() {
     this.errors.fullName = ''
@@ -188,7 +229,7 @@ export default {
       isValid = false
     }
 
-    if (!isStrongPassword(this.form.password)) {
+    if (!this.user && !isStrongPassword(this.form.password)) {
       this.errors.password = 'Mật khẩu cần ít nhất 6 ký tự, gồm chữ hoa, thường, số và ký tự đặc biệt.'
       isValid = false
     }
@@ -199,7 +240,7 @@ export default {
     handleFileChange(event) {
       const file = event.target.files[0]
       if (file) {
-        this.formupdate.file = this.formupdate.file
+        this.formupdate.file = file
         this.imagePreview = URL.createObjectURL(file)
       } else {
         this.formupdate.file = null
@@ -215,19 +256,52 @@ export default {
     this.formupdate.fullName = this.form.fullName
     console.log('Form data:', this.form)
     console.log('Form update data:', this.formupdate)
-    await this.authStore.register(this.form)
-    await this.authStore.UpdateUserProfiles(this.formupdate, this.form.email)
-
+    if (this.user) {
+      // Cập nhật tài khoản
+      await this.authStore.UpdateUserProfiles(this.formupdate, this.form.email)
+       await this.authStore.updateUserProfileByUserId(
+        this.user.id,
+        this.form.email,
+        this.form.fullName,
+        this.status
+      )
+       await this.authStore.updateUserRole(
+        this.user.id,
+        this.form.role
+      )
+      alert('Cập nhật tài khoản thành công!')
+    } else {
+      // Thêm mới tài khoản
+      await this.authStore.register(this.form)
+      await this.authStore.UpdateUserProfiles(this.formupdate, this.form.email)
+      alert('Tạo tài khoản thành công!')
+      this.form.fullName = '',
+      this.form.email = '',
+      this.form.role = '',
+      this.formupdate.gender = ''
+      this.imagePreview = ''
+    }
+   
     this.$emit('created', { ...this.form })
-    alert('Tạo tài khoản thành công!')
   } catch (error) {
     console.error('Error creating user:', error)
     alert('Đã xảy ra lỗi khi tạo tài khoản. Vui lòng thử lại.')
   } finally {
     this.isSubmitting = false
   }
-}
-
+},
+mounted() {
+  if (this.user) {
+    this.form.fullName = this.user.fullName || ''
+    this.form.email = this.user.email || ''
+    this.form.role = this.user.role || ''
+    this.formupdate.gender = this.user.gender || ''
+    this.imagePreview = this.user.imageUrl || null
   }
 }
+
+
+}
+}
+
 </script>

@@ -2,22 +2,19 @@
    <div v-if="useUser.user?.role !=='Admin'">
       <notrolecomponent />
     </div>
-   
     <div v-else class="p-6">
-
       <div class="flex justify-between mb-4">
         <h1 class="text-2xl font-bold">Quản lý Nha sĩ</h1>
 
-        <button @click="openForm()" class="bg-green-600 text-white px-4 py-2 rounded">
+        <button @click="openCreate()" class="bg-green-600 text-white px-4 py-2 rounded">
           + Thêm Nha sĩ
         </button>
       </div>
       <SearchBar v-model:search="search" @refresh="handleRefresh" />
       <table class="w-full table-auto border border-collapse border-gray-300">
-        <thead class="bg-gray-100 text-left">
-          <tr>
+      <thead class="bg-gray-100 text-left">
+        <tr class="bg-gray-200">
             <th class="p-3 border border-gray-300">Họ tên</th>
-            <th class="p-3 border border-gray-300">Email</th>
             <th class="p-3 border border-gray-300">Chuyên môn</th>
             <th class="p-3 border border-gray-300">Trạng thái</th>
             <th class="p-3 border border-gray-300">Hành động</th>
@@ -26,7 +23,6 @@
         <tbody>
           <tr v-for="dentist in paginatedDentists" :key="dentist.id" class="border-t">
             <td class="p-3 border border-gray-300">{{ dentist.user?.fullName }}</td>
-            <td class="p-3 border border-gray-300">{{ dentist.user?.email }}</td>
             <td class="p-3 border border-gray-300">{{ dentist.speacialty }}</td>
             <td class="p-3 border border-gray-300">
               <span :class="dentist.status === 0 ? 'text-green-600' : 'text-red-500'">
@@ -54,11 +50,13 @@
 
       <DentistForm v-if="showForm" :dentist="selectedDentist" @close="closeForm" @saved="fetchDentists" />
       <DentistDetail v-if="showDetail" :dentist="selectedDentist" @close="closeDetail" />
+      <Dentistcreate v-if="isOpen" :editData="selectedDentist" @close="isOpen = false" @success="fetchDentists" />
     </div>
   </template>
   
   <script>
 import DentistForm from './dentistform.vue'
+import Dentistcreate from './dentistcreate.vue'
 import DentistDetail from './dentistdetail.vue'
 import Pagination from '../../components/paginationcomponent.vue'
 import SearchBar from '../../components/searchbar.vue'
@@ -71,18 +69,20 @@ export default {
     DentistDetail,
     Pagination,
     SearchBar,
-    notrolecomponent
+    notrolecomponent,
+    Dentistcreate
   },
   data() {
     return {
-      dentists: [],               // Tất cả dentists lấy từ server
+      dentists: [],               
       selectedDentist: null,
       showForm: false,
       showDetail: false,
       dentistStore: useDentistStore(),
       currentPage: 1,
       pageSize: 5,
-      search: ''                  // Keyword tìm kiếm
+      search: ''  ,
+      isOpen: false                
     }
   },
   mounted() {
@@ -126,8 +126,13 @@ export default {
     },
     openForm(dentist = null) {
       this.selectedDentist = dentist
-      this.showForm = true
+      this.isOpen = true
     },
+    openCreate() {
+      this.selectedDentist = null
+      this.isOpen = true
+    },
+
     closeForm() {
       this.selectedDentist = null
       this.showForm = false
@@ -143,8 +148,14 @@ export default {
     async deleteDentist(id, userId) {
       if (!confirm('Bạn chắc chắn muốn xóa nha sĩ và tài khoản này?')) return
       try {
-        await this.dentistStore.deleteDentist(id, userId)
+        var res = await this.dentistStore.deleteDentist(id, userId)
+        if (res === true) {
+          alert('Xóa nha sĩ thành công!')
         this.fetchDentists()
+        } else {
+          alert(res.message)
+          return
+        }
       } catch (err) {
         alert('Xóa thất bại!')
         console.error(err)

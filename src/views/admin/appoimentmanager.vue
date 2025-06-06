@@ -22,19 +22,19 @@
       <div>
         <table>
           <thead>
-            <tr>
-              <th>Bác sĩ</th>
-              <th>Khách hàng</th>
-              <th>Ngày</th>
-              <th>Trạng thái</th>
-              <th>Hành động</th>
+            <tr class="bg-gray-200">
+              <th class="border-gray-500">Bác sĩ</th>
+              <th class="border-gray-500">Khách hàng</th>
+              <th class="border-gray-500">Ngày</th>
+              <th class="border-gray-500">Trạng thái</th>
+              <th class="border-gray-500">Hành động</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="appointment in paginatedAppointment" :key="appointment.id">
               <td>{{ appointment.dentists?.user?.fullName || 'Chưa chọn' }}</td>
               <td>{{ appointment.customers.fullName }}</td>
-              <td>{{ new Date(appointment.appointmentDate).toLocaleString() }}</td>
+              <td>{{ appointment.appointmentDate?.replace('T', ' ')  }}</td>
               <td class="p-2" :class="{
                 'bg-green-100 text-green-700': appointment.status === 0,
                 'bg-yellow-100 text-yellow-700': appointment.status === 1,
@@ -113,7 +113,7 @@
     data() {
     return {
       appointments: [],
-      filteredResults: [],    // <-- Thêm biến lưu kết quả tìm kiếm
+      filteredResults: [],    
       loading: false,
       error: null,
       searchDoctorName: '',
@@ -192,7 +192,7 @@
         : true;
       const matchStatus = this.selectedStatus !== null
         ? appointment.status === this.selectedStatus
-        : true; // Kiểm tra trạng thái nếu có chọn
+        : true; 
 
       return matchDoctor && matchCustomer && matchDate && matchStatus;
     });
@@ -231,10 +231,10 @@
     alert("Lịch hẹn đã bị hủy, không thể thay đổi trạng thái.");
     return;
   }
-  if (appointment.status === 1) {
-    alert("Lịch hẹn đã được xác nhận!");
-    return;
-  }
+  // if (appointment.status === 1) {
+  //   alert("Lịch hẹn đã được xác nhận!");
+  //   return;
+  // }
   if (appointment.status === 2) {
     alert("Lịch hẹn đã hoàn thành, không thể thay đổi trạng thái.");
     return;
@@ -251,16 +251,15 @@
     appointmentId: id,
     dentistId: dentistId,
     status: status,
+    dentistNotes: appointment.dentistNotes || '',
   };
 
   const emailType = status === 1 ? 0 : 1;
 
   const res = await this.useService.updateAppointment(update);
   if (res) {
-    // ✅ Cập nhật trực tiếp status trong `appointments`
     appointment.status = status;
 
-    // ✅ Cập nhật lại trong `filteredResults`
     const isMatchFilter = (this.selectedStatus === null || status === this.selectedStatus);
 
     const filteredIndex = this.filteredResults.findIndex(a => a.appointmentId === id);
@@ -269,11 +268,11 @@
       if (filteredIndex !== -1) {
         this.filteredResults[filteredIndex].status = status;
       } else {
-        this.filteredResults.unshift(appointment); // nếu chưa có thì thêm mới
+        this.filteredResults.unshift(appointment); 
       }
     } else {
       if (filteredIndex !== -1) {
-        this.filteredResults.splice(filteredIndex, 1); // nếu không match thì loại bỏ
+        this.filteredResults.splice(filteredIndex, 1); 
       }
     }
 
@@ -306,6 +305,7 @@ async assignDentistToAppointment(dentist) {
     appointmentId: this.selectedAppointmentId,
     dentistId: dentist.id,
     status: 0, 
+    dentistNotes: '',
   };
   console.log("update", update);
   const res = await this.useService.updateAppointment(update);

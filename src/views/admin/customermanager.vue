@@ -5,11 +5,9 @@
 
   <div v-else class="p-4">
     <div class="flex justify-end mb-4">
-  <button @click="showCreateModal = true" class="px-4 py-2 bg-green-600 text-white rounded">+ Thêm tài khoản</button>
+  <button @click="openCreate()" class="px-4 py-2 bg-green-600 text-white rounded">+ Thêm tài khoản</button>
     </div>
     <SearchBar v-model:search="search" @refresh="handleRefresh" />
-
-    
 
     <!-- Table -->
     <table class="w-full table-auto border border-collapse border-gray-300">
@@ -31,7 +29,7 @@
             {{ user.status === 0 ? 'Hoạt động' : 'Không hoạt động' }}
           </td>
           <td class="p-3 border border-gray-300 space-x-2">
-            <button @click="openEditForm(user)" class="text-blue-500">✏️</button>
+            <button @click="openEdit(user)" class="text-blue-500">✏️</button>
             <button @click="deleteUser(user.id)" class="text-red-500">🗑️</button>
             <button @click="viewDetail(user)" class="text-green-500">👁️</button>
           </td>
@@ -41,44 +39,8 @@
 
     <!-- Pagination -->
     <Pagination :currentPage="currentPage" :totalPages="totalPages" @change-page="changePage" />
-
-    <!-- Edit Modal -->
-    <div v-if="showEditModal" class="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-lg w-1/3 p-6">
-        <h2 class="text-xl font-semibold mb-4">Chỉnh sửa người dùng</h2>
-        <form @submit.prevent="submitEdit">
-          <div class="mb-3">
-            <label class="block mb-1">Họ và tên</label>
-            <input v-model="editForm.fullName" class="w-full border rounded px-3 py-2" required readonly />
-          </div>
-          <div class="mb-3">
-            <label class="block mb-1">Email</label>
-            <input v-model="editForm.email" class="w-full border rounded px-3 py-2" required readonly />
-          </div>
-          <div class="mb-3">
-            <label class="block mb-1">Vai trò</label>
-            <select v-model="editForm.roles" class="w-full border rounded px-3 py-2">
-              <option value="User">Bệnh nhân</option>
-              <option value="Admin">Admin</option>
-              <option value="Dentist">Nha Sĩ</option>
-            </select>
-          </div>
-          <div class="mb-3">
-            <label class="block mb-1">Trạng thái</label>
-            <select v-model="editForm.status" class="w-full border rounded px-3 py-2">
-              <option :value="0">Hoạt động</option>
-              <option :value="1">Không hoạt động</option>
-            </select>
-          </div>
-          <div class="flex justify-end space-x-2">
-            <button type="button" @click="showEditModal = false" class="px-4 py-2 bg-gray-300 rounded">Hủy</button>
-            <button type="submit" class="px-4 py-2 bg-blue-500 text-white rounded">Lưu</button>
-          </div>
-        </form>
-      </div>
-    </div>
     <Customerdetail v-if="showDetail" :user="selectedUser" @close="closeDetail" />
-    <usercreateform v-if="showCreateModal" @close="showCreateModal = false" @created="handleUserCreated" />
+    <usercreateform v-if="showCreateModal" :user="selectedUser" @close="showCreateModal = false" @created="handleUserCreated" />
   </div>
 </template>
 <script>
@@ -123,6 +85,9 @@ export default {
     }
   },
   computed: {
+     isEditMode() {
+    return this.selectedUser !== null
+  },
     authStore() {
       return useAuthStore()
     },
@@ -152,6 +117,14 @@ export default {
         return 'Bệnh nhân'
       }
     },
+    openCreate() {
+      this.selectedUser = null
+      this.showCreateModal = true
+    },
+     openEdit(user) {
+      this.selectedUser = user
+      this.showCreateModal = true
+    },
     handleRefresh() {
       this.fetchUsers()
       this.search = ''
@@ -174,10 +147,7 @@ export default {
         this.currentPage = page
       }
     },
-    openEditForm(user) {
-      this.editForm = { ...user }
-      this.showEditModal = true
-    },
+   
     async submitEdit() {
       const creatDentistForm = {
         id: null,
@@ -222,23 +192,11 @@ export default {
         this.fetchUsers()
       }
     },
-     async handleUserCreated(newUserData) {
-      try {
-        await this.authStore.register({
-          email: newUserData.email,
-          password: newUserData.password,
-          fullName: newUserData.fullName,
-          role: newUserData.role
-        }).then(async (res) => {
-          this.authStore.updateUserProfile()
-          
-        })
-        alert("Tạo tài khoản thành công")
-        this.showCreateModal = false
+     async handleUserCreated() {
         this.fetchUsers()
-      } catch (error) {
-        console.error("Tạo tài khoản thất bại", error)
-      }
+        if (this.isEditMode) {
+    this.showCreateModal = false
+  }
     }
   },
   mounted() {

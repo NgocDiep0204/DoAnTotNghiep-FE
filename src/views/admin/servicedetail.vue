@@ -4,7 +4,7 @@
       <h2 class="text-xl font-semibold mb-4">Chi tiết dịch vụ</h2>
       <div class="mb-2"><strong>ID:</strong> {{ service.serviceId }}</div>
       <div class="mb-2"><strong>Tên dịch vụ:</strong> {{ service.serviceName }}</div>
-      <div class="mb-2"><strong>Thời gian thực hiện:</strong> {{ service.duration }}</div>
+      <div class="mb-2"><strong>Giá cả:</strong> {{ service.price }}</div>
       <div class="mb-4"><strong>Trạng thái:</strong> {{ service.status === 0 ? 'Hoạt động' : 'Không hoạt động' }}</div>
       <div class="mb-2"><strong>Mô tả:</strong> {{ service.serviceDescription }}</div>
       <div class="mb-2">

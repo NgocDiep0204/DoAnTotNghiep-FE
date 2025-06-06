@@ -40,6 +40,7 @@ export const useServiceStore = defineStore('service', {
                 const response = await axiosClient.get(`Service/GetServicesByDentalStatus?status=${status}`)
                 this.services = response.data.$values
                 console.log(this.services)
+                return response.data.$values
             } catch (error) {
                 console.error('Error fetching service by status:', error)
             }
@@ -167,12 +168,69 @@ export const useServiceStore = defineStore('service', {
         async createAppointmentDetail(appointmentDetail) {
             try {
                 const response = await axiosClient.post(`AppointmentDetail/CreateAppointmentDetail`, appointmentDetail)
-                console.log(response.data)
+                console.log(response)
                 return true
-            } catch (error) {
-                console.error('Error creating appointment detail:', error)
-            }   
-        },
+             }catch (error) {
+        if (error.response) {
+    
+          if (error.response.status === 500) {
+            return { success: false, message: "Dịch vụ này đã được thêm" };
+          } 
+        }
+    
+        return { success: false, message: "Lỗi không xác định khi xác minh" };
+      }
+    },
+      async updateAppointmentDetail(appointmentDetail) {
+    try {
+        const response = await axiosClient.put(`AppointmentDetail/UpdateAppointmentDetail`, appointmentDetail)
+        console.log(response.data)
+        return true
+    } catch (error) {
+        if (error.response) {
+            console.error('❌ Server responded with error:');
+            console.error('Status:', error.response.status);
+            console.error('Message:', error.response.statusText);
+            console.error('Data:', error.response.data);
+        } else if (error.request) {
+            console.error('❌ No response received from server:', error.request);
+        } else {
+            console.error('❌ Error setting up request:', error.message);
+        }
+    }
+  },
+
+  async getAppointmentDetailByAppointmentId(appointmentId) {
+    try {
+        const response = await axiosClient.get(`AppointmentDetail/GetAllAppointmentDetailsByAppoinmentId?id=${appointmentId}`)
+        return response.data.$values
+    } catch (error) {
+
+
+        console.error('Error fetching appointment details by appointment ID:', error)
+        return []
+    }
+  },
+
+        async deleteAppointmentDetail(appointmentDetail) {
+    try {
+        const response = await axiosClient.delete(`AppointmentDetail/DeleteAppointmentDetail`, {
+            data: appointmentDetail
+        });
+        return true;
+    } catch (error) {
+        if (error.response) {
+            console.error('❌ Server responded with error:');
+            console.error('Status:', error.response.status);
+            console.error('Message:', error.response.statusText);
+            console.error('Data:', error.response.data);
+        } else if (error.request) {
+            console.error('❌ No response received from server:', error.request);
+        } else {
+            console.error('❌ Error setting up request:', error.message);
+        }
+    }
+},
 
         async getAppointments(){
           try {
@@ -185,25 +243,43 @@ export const useServiceStore = defineStore('service', {
           }
         },
 
+        async getAppointmentByDentist(id) {
+            try {
+                const response = await axiosClient.get(`Appointment/GetAppointmentsByDentist?dentistId=${id}`)
+                return response.data.$values
+            } catch (error) {
+                console.error('Error fetching appointment by dentist ID:', error)
+            }
+        },
+
         async getAppointmentByUserId(userId) {
             try {
                 const response = await axiosClient.get(`Appointment/GetAppointmentsByUserId?userId=${userId}`)
-                this.appointments = response.data.result
+                this.appointments = response.data.$values
                 console.log(this.appointments )
                 return true
             } catch (error) {
                 console.error('Error fetching appointment by user ID:', error)
             }
         },
-        async updateAppointment(update){
-            try {
-                const response = await axiosClient.put(`Appointment/UpdateAppoiment`, update)
-                console.log(response.data)
-                return true
-            } catch (error) {
-                console.error('Error updating appointment status:', error)
-            }
-        },
+       async updateAppointment(update) {
+  try {
+    const response = await axiosClient.put(`Appointment/UpdateAppoiment`, update);
+    console.log('Cập nhật thành công:', response.data);
+    return true;
+  } catch (error) {
+    if (error.response) {
+      console.error('❌ Lỗi từ phía server (400+):');
+      console.error('Status:', error.response.status);
+      console.error('Headers:', error.response.headers);
+      console.error('Data:', error.response.data); // Đây là phần quan trọng nhất
+    } else if (error.request) {
+      console.error('❌ Không nhận được phản hồi từ server:', error.request);
+    } else {
+      console.error('❌ Lỗi khi tạo request:', error.message);
+    }
+  }
+},
         async getAppoinmentByStatus(status) {
             try {
                 const response = await axiosClient.get(`Appointment/getAppointmentsByStatus?status=${status}`)

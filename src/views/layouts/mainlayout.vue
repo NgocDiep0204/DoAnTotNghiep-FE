@@ -18,8 +18,7 @@
         <div>
             <router-view />
         </div>
-        <footercomponent/>
-    <!-- </div> -->
+        <footercomponent v-if="useUser.user && useUser.user.role === 'User'" />
 </template>
 
 <script>

@@ -1,53 +1,76 @@
 <template>
-  <div class="p-6 max-w-4xl mx-auto">
-    <statuscomponent @status-clicked="filterByStatus" class="mb-6" />
+  <div class="p-4 max-w-3xl mx-auto">
+    <!-- Component lọc trạng thái -->
+    <statuscomponent @status-clicked="filterByStatus" class="mb-4" />
 
-    <!-- Nếu chưa có lịch sử nào (tổng thể) -->
-    <div v-if="!useService.appointments || useService.appointments.length === 0" class="text-gray-500">
-      Chưa có lịch sử khám nào.
+    <!-- Không có lịch sử -->
+    <div v-if="!useService.appointments || useService.appointments.length === 0" class="text-center py-10">
+      <p class="text-lg text-gray-500">Bạn chưa có lịch sử khám.</p>
     </div>
 
-    <div v-else-if="filteredAppointments.length === 0" class="text-gray-500 mt-6">
-      Chưa có lịch sử khám nào.
+    <!-- Không tìm thấy lịch phù hợp -->
+    <div v-else-if="filteredAppointments.length === 0" class="text-center py-10">
+      <p class="text-lg text-gray-500">Không tìm thấy lịch theo trạng thái đã chọn.</p>
     </div>
+
+    <!-- Danh sách lịch khám -->
     <div v-else class="space-y-4">
       <div
         v-for="(item, index) in filteredAppointments"
         :key="index"
-        class="bg-white shadow rounded-2xl p-4 border border-gray-100"
+        class="bg-white border border-gray-100 rounded-xl shadow-sm hover:shadow-md transition duration-300 p-4"
       >
-        <div class="flex justify-between items-center">
-          <div>
-            <p class="text-lg font-semibold text-blue-600">Ngày : {{ getDate(item.appointmentDate) }}</p>
-            <p>Giờ: {{ getTime(item.appointmentDate) }}</p>
-            <p class="text-gray-600">Bác sĩ: {{ item.dentistName }}</p>
-            <p class="text-gray-500 italic mt-1">Dịch vụ khám: {{ item.serviceName }}</p>
+        <div class="grid md:grid-cols-2 gap-4">
+          <!-- Thông tin chung -->
+          <div class="space-y-1 text-gray-700 text-sm">
+            <p><span class="font-medium text-gray-900">Ngày:</span> {{ getDate(item.appointmentDate) }}</p>
+            <p><span class="font-medium text-gray-900">Giờ:</span> {{ getTime(item.appointmentDate) }}</p>
+            <p><span class="font-medium text-gray-900">Bác sĩ:</span> {{ item.dentists.user.fullName }}</p>
+            <p v-if="item.notes"><span class="font-medium text-gray-900">Ghi chú của bạn:</span> {{ item.notes }}</p>
+            <p v-if="item.dentistNotes"><span class="font-medium text-gray-900">Ghi chú nha sĩ:</span> {{ item.dentistNotes }}</p>
+            
           </div>
-          <div class="text-right">
-            <span
-              class="px-3 py-1 rounded-full text-sm font-medium block mb-2"
-              :class="{
-                'bg-green-100 text-green-700': item.status === 0,
-                'bg-yellow-100 text-yellow-700': item.status === 1,
-                'bg-red-100 text-red-700': item.status === 2
-              }"
-            >
-              {{ returnString(item.status) }}
-            </span>
-            <!-- Nút Hủy -->
-            <button
-              v-if="item.status === 0"
-              @click="cancelAppointment(item.appointmentId, item.dentistId)"
-              class="bg-red-400 hover:bg-red-600 text-black text-sm px-3 py-1 rounded-md"
-            >
-              Hủy lịch hẹn
-            </button>
+
+          <!-- Dịch vụ, trạng thái và nút -->
+          <div class="space-y-2 text-sm">
+            <div>
+              <p class="font-medium text-gray-900 mb-1">Dịch vụ:</p>
+              <ul class="list-disc list-inside text-gray-700 space-y-0.5">
+                <li v-for="(service, i) in item.appointmentDetails.$values" :key="i">{{ service.services.serviceName }}</li>
+              </ul>
+            </div>
+
+            <div class="flex items-center gap-3 mt-3 flex-wrap">
+              <span
+                class="px-3 py-0.5 text-xs rounded-full font-medium capitalize"
+                :class="{
+                  'bg-green-100 text-green-600': item.status === 0,
+                  'bg-yellow-100 text-yellow-600': item.status === 1,
+                  'bg-red-100 text-red-600': item.status === 2,
+                  'bg-gray-200 text-gray-600': item.status === 3
+                }"
+              >
+                {{ returnString(item.status) }}
+              </span>
+
+              <button
+                v-if="item.status === 0"
+                @click="cancelAppointment(item.appointmentId, item.dentistId)"
+                class="text-xs px-3 py-1 rounded bg-red-500 hover:bg-red-600 text-white transition"
+              >
+                Hủy lịch
+              </button>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
 </template>
+
+  
+
+
 
 
 <script>

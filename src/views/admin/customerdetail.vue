@@ -18,8 +18,8 @@
           <p><span class="font-semibold">🆔 ID:</span> {{ user.id }}</p>
           <p><span class="font-semibold">👤 Họ tên:</span> {{ user.fullName }}</p>
           <p><span class="font-semibold">📧 Email:</span> {{ user.email }}</p>
-          <p><span class="font-semibold">📱 Số điện thoại:</span> {{ user.phoneNumber }}</p>
-          <p><span class="font-semibold">🔐 Quyền:</span> {{ user.roles }}</p>
+          <p><span class="font-semibold">👤 Giới tính:</span> {{ user.gender }}</p>
+          <p><span class="font-semibold">🔐 Vai trò:</span> {{ returnString(user.roles) }}</p>
           <p>
             <span class="font-semibold">⚙️ Trạng thái:</span>
             <span :class="user.status === 0 ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'">
@@ -43,4 +43,16 @@
 
 <script setup>
 defineProps(['user'])
+
+const returnString = (str) => {
+  if (str === 'Dentist') {
+    return 'Nha sĩ'
+  } else if (str === 'Admin') {
+    return 'Quản trị viên'
+  } else if (str === 'User') {
+    return 'Bệnh nhân'
+  }
+  return str 
+}
 </script>
+

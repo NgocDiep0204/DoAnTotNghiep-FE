@@ -1,4 +1,4 @@
-<template class="bg-white">
+<template>
   <div class="max-w-full mx-auto bg-white shadow-md overflow-hidden pl-8" v-if="dentist">
     <div class="md:flex gap-4">
       <!-- Ảnh và chuyên môn -->
@@ -19,10 +19,18 @@
           <div class="flex flex-col text-left w-1/2">
             <p class="text-sm">Chuyên môn chính:</p>
             <p class="font-bold text-sm">{{ dentist.speacialty }}</p>
+            <div v-if="dentist.postgraduates">
+              <p class="text-sm">Bằng cấp sau đại học:</p>
+              <p class="font-bold text-sm">{{ dentist.postgraduates }}</p>
+            </div>
           </div>
           <div class="flex flex-col text-left w-1/2">
             <p class="text-sm">Kinh nghiệm:</p>
             <p class="font-bold text-sm">{{ getYearsExperience(dentist.years) }}</p>
+            <div>
+              <p class="text-sm">Giá khám:</p>
+              <p class="font-bold text-sm">{{ formatPrice(dentist.price) }}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -36,7 +44,7 @@
             <div
               @click="selectedIndex = index"
               class="flex justify-between items-center px-4 py-3 cursor-pointer transition-colors duration-200 mb-2 
-                bg-[#F5F5F5] hover:bg-blue-900 hover:text-white"
+              bg-[#F5F5F5] hover:bg-blue-900 hover:text-white"
             >
               <span class="text-sm font-medium">{{ service.serviceName }}</span>
               <span class="text-xl font-bold">+</span>
@@ -95,6 +103,13 @@ export default {
     }
   },
   methods: {
+    formatPrice(price) {
+      if (!price) return 'Chưa cập nhật'
+      return new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND',
+      }).format(price)
+    },
     getStringPart(string) {
       return splitCommaToArray(string)
     },
@@ -118,3 +133,7 @@ export default {
   },
 }
 </script>
+
+<style scoped>
+/* Thêm CSS tùy chỉnh nếu cần */
+</style>

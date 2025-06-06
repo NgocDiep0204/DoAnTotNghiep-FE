@@ -33,7 +33,7 @@
     <!-- Chat Section -->
     <div class="flex-1 flex flex-col">
       <div class="bg-gray-200 p-4 text-xl font-bold">
-        {{ selectedUser?.userName || 'Select a user to chat' }}
+        {{ selectedUser?.fullName || 'Select a user to chat' }}
       </div>
 
       <div ref="messageList" class="flex-1 p-4 overflow-y-auto space-y-2 flex flex-col">
@@ -245,7 +245,7 @@ export default {
 
         // Hiện toast nếu tin nhắn là của người khác (không phải mình)
         if (message.senderId !== this.currentUserId) {
-          this.showToast(`Tin nhắn mới từ ${this.selectedUser?.userName || 'Người dùng'}`);
+          this.showToast(`Tin nhắn mới từ ${this.selectedUser?.fullName || 'Người dùng'}`);
         }
       });
     },

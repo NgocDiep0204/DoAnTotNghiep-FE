@@ -14,7 +14,21 @@
           class="input"
           :disabled="loading"
         />
+        <input
+          v-model="form.price"
+          type="number"
+          placeholder="Giá cả (VNĐ)"
+          class="input"
+          :disabled="loading"
+        />
 
+        <select v-model="form.unit" class="input" :disabled="loading">
+          <option disabled value="">Chọn đơn vị</option>
+          <option value="Răng">Tinh theo răng</option>
+          <option value="Toàn bộ">Tính theo toàn bộ</option>
+        </select>
+
+        
         <select v-model="form.status" class="input" :disabled="loading">
           <option :value="0">Không hoạt động</option>
           <option :value="1">Hoạt động</option>
@@ -83,8 +97,9 @@
         <thead>
           <tr class="bg-gray-200">
             <th class="p-1 text-left">Tên</th>
-            <th class="p-1 text-center">Thời gian</th>
             <th class="p-1 text-center">Trạng thái</th>
+            <th class="p-1 text-center">Giá cả</th>
+            <th class="p-1 text-center">Đơn vị</th>
             <th class="p-1 text-center">Hình ảnh</th>
             <th class="p-1 text-center">Hành động</th>
           </tr>
@@ -97,6 +112,10 @@
                 {{ svc.status === 1 ? 'Hoạt động' : 'Ẩn' }}
               </span>
             </td>
+            
+            <td class="p-2 text-center">{{ svc.price.toLocaleString() }} VNĐ</td>
+            <td class="p-2 text-center">{{ svc.unit }} </td>
+
             <td class="p-2 text-center">
               <img
                 :src="svc.imgService"
@@ -104,6 +123,7 @@
                 class="w-16 h-16 object-cover rounded border mx-auto"
               />
             </td>
+            <!-- <td class="p-2 text-center">{{ svc.price.toLocaleString() }} VNĐ</td> -->
             <td class="p-2 text-center whitespace-nowrap">
               <div class="inline-flex space-x-1 justify-center">
                 <button @click="editService(svc)" class="rounded-md p-1 bg-yellow-400 hover:bg-yellow-500">
@@ -163,6 +183,8 @@ export default {
         serviceId: "id",
         serviceName: '',
         serviceDescription: '',
+        price: 0,
+        unit: '',
         benefit: '',
         status: 1,
         imgService: '',
@@ -219,6 +241,8 @@ export default {
         serviceId: "id",
         serviceName: '',
         serviceDescription: '',
+        price: 0,
+        unit: '',
         benefit: '',
         status: 1,
         imgService: '',
@@ -229,16 +253,15 @@ export default {
     },
 
     async handleSubmit() {
-      if (!this.form.serviceName || !this.imageFile) {
-        alert('Vui lòng điền đầy đủ tên dịch vụ và ảnh dịch vụ')
-        return
-      }
+     
       this.loading = true
       try {
         const formData = new FormData()
         if (this.form.serviceId) formData.append('ServiceId', this.form.serviceId)
         formData.append('ServiceName', this.form.serviceName)
         formData.append('ServiceDescription', this.form.serviceDescription)
+        formData.append('Price', this.form.price)
+        formData.append('Unit', this.form.unit)
         formData.append('Benefit', this.form.benefit)
         formData.append('Status', this.form.status)
 
@@ -250,6 +273,11 @@ export default {
           await this.serviceStore.updateService(formData)
           alert('Cập nhật dịch vụ thành công!')
         } else {
+           if (!this.form.serviceName || !this.imageFile) {
+            alert('Vui lòng điền đầy đủ tên dịch vụ và ảnh dịch vụ')
+            return
+          }
+
           await this.serviceStore.createService(formData)
           alert('Thêm dịch vụ thành công!')
         }
@@ -270,6 +298,8 @@ export default {
         serviceId: svc.serviceId,
         serviceName: svc.serviceName,
         serviceDescription: svc.serviceDescription,
+        price: svc.price,
+        unit: svc.unit,
         benefit: svc.benefit,
         status: svc.status,
         imgService: svc.imgService,

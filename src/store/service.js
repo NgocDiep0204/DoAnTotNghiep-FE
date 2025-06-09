@@ -301,7 +301,24 @@ export const useServiceStore = defineStore('service', {
             }
         },
 
-          
+        async GetPatientDetail(id){
+            try {
+                const response = await axiosClient.get(`Appointment/GetPatientDetail?id=${id}`)
+                return response.data
+            } catch (error) {
+                console.error('Error fetching patient by ID:', error)
+                return null
+            }
+        },
+        async GetPatientList(id){
+            try {
+                const response = await axiosClient.get(`Appointment/GetPatientList?dentistId=${id}`)
+                return response.data.$values
+            } catch (error) {
+                console.error('Error fetching patient list by ID:', error)
+                return []
+            }
+        }
 
     }
 })

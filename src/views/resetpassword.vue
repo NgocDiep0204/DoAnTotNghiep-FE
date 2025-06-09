@@ -1,12 +1,12 @@
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gray-100">
     <div class="bg-white p-6 rounded-lg shadow-lg w-full max-w-md">
-      <h3 class="text-lg font-semibold text-center mb-4">Reset Password</h3>
-      <input v-model="resetPassword.new" type="password" placeholder="Nhập mật khẩu" class="w-full p-2 border rounded-md mb-4" />
+      <h3 class="text-lg font-semibold text-center mb-4">Đặt lại mật khẩu</h3>
+      <input v-model="resetPassword.new" type="password" placeholder="Nhập mật khẩu mới" class="w-full p-2 border rounded-md mb-4" />
       <input v-model="resetPassword.confirm" type="password" placeholder="Nhập lại mật khẩu" class="w-full p-2 border rounded-md mb-4" />
       <div class="flex justify-end space-x-2">
-        <button @click="$router.push('/login')" class="px-4 py-2 bg-gray-400 text-white rounded-md">Cancel</button>
-        <button @click="resetUserPassword" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Reset</button>
+        <button @click="$router.push('/dang-nhap')" class="px-4 py-2 bg-gray-400 text-white rounded-md">Hủy</button>
+        <button @click="resetUserPassword" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Đặt lại</button>
       </div>
     </div>
   </div>

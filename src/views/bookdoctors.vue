@@ -1,10 +1,16 @@
 <template>
-  <div class="max-w-2xl mx-auto p-6 pt-10 m-10  bg-white shadow-lg rounded-lg">
-    <strong><h2 class="flex justify-center mb-10">ĐẶT LỊCH HẸN</h2></strong>
+  <div class="max-w-2xl mx-auto p-6 pt-10 m-10 bg-white shadow-lg rounded-lg">
+    <strong>
+      <h2 class="flex justify-center mb-10">ĐẶT LỊCH HẸN</h2>
+    </strong>
 
     <!-- Chọn ngày và bác sĩ -->
     <div class="flex gap-4 mb-4">
-      <input type="date" v-model="selectedDate" class="border p-2 rounded w-full" />
+      <input
+        type="date"
+        v-model="selectedDate"
+        class="border p-2 rounded w-full"
+      />
 
       <select v-model="selectedDoctor" class="border p-2 rounded w-full">
         <option value="" disabled>Chọn bác sĩ</option>
@@ -17,7 +23,11 @@
     <!-- Dịch vụ -->
     <select v-model="selectedService" class="border p-2 rounded w-full mb-4">
       <option value="" disabled>Chọn dịch vụ</option>
-      <option v-for="service in useService.services" :key="service.serviceId" :value="service.serviceId">
+      <option
+        v-for="service in useService.services"
+        :key="service.serviceId"
+        :value="service.serviceId"
+      >
         {{ service.serviceName }}
       </option>
     </select>
@@ -40,10 +50,17 @@
     </div>
 
     <!-- Ghi chú -->
-    <textarea v-model="note" placeholder="Ghi chú" class="border p-2 rounded w-full mb-4"></textarea>
+    <textarea
+      v-model="note"
+      placeholder="Ghi chú"
+      class="border p-2 rounded w-full mb-4"
+    ></textarea>
 
     <!-- Nút đặt lịch -->
-    <button class="bg-blue-700 text-white py-2 px-4 rounded w-full flex items-center justify-center" @click="bookAppointment">
+    <button
+      class="bg-blue-700 text-white py-2 px-4 rounded w-full flex items-center justify-center"
+      @click="bookAppointment"
+    >
       📅 Đặt lịch hẹn!
     </button>
   </div>
@@ -51,13 +68,14 @@
 
 <script>
 import { useServiceStore } from '../store/service.js';
-import { useAuthStore } from '../store/user/authstore'
+import { useAuthStore } from '../store/user/authstore';
 import { useDentistStore } from '../store/dentist.js';
+import axiosClient from '../axiosClient'
 
 export default {
   data() {
     return {
-      dentists : [],
+      dentists: [],
       selectedDate: new Date().toISOString().split('T')[0],
       selectedDoctor: '',
       selectedService: '',
@@ -68,7 +86,7 @@ export default {
         '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
         '11:00', '11:30', '12:00', '12:30', '13:00', '13:30',
         '14:00', '14:30', '15:00', '15:30', '16:00', '16:30',
-        '17:00', '17:30', '18:00', 
+        '17:00', '17:30', '18:00',
       ],
       appointments: {
         customerid: "",
@@ -76,10 +94,11 @@ export default {
         appointmentdate: "",
         note: "",
       },
-      appointmentDetail:{
+      appointmentDetail: {
         appointmentId: "",
         serviceId: "",
-      }
+      },
+      workingSchedules: [], // Lịch làm việc của bác sĩ trong tháng
     };
   },
   computed: {
@@ -92,7 +111,6 @@ export default {
     useDentist() {
       return useDentistStore();
     }
-    
   },
   watch: {
     selectedDoctor: 'handleDoctorOrDateChange',
@@ -101,13 +119,13 @@ export default {
   mounted() {
     this.useService.getServices();
     this.getdata();
-    this.handleDoctorOrDateChange(); 
+    this.handleDoctorOrDateChange();
   },
   methods: {
-    async getdata(){
+    async getdata() {
       const res = await this.useDentist.getdentists();
       this.dentists = res;
-      console.log("ddddd",this.dentists);
+      console.log("Danh sách bác sĩ:", this.dentists);
     },
 
     isPastTime(time) {
@@ -117,14 +135,71 @@ export default {
       selected.setHours(hours, minutes, 0, 0);
       return selected < now;
     },
+
     isBookedTime(time) {
       return this.bookedTimes.includes(time);
     },
-    isDisabled(time) {
-      return this.isPastTime(time) || this.isBookedTime(time);
+
+    isWithinWorkingHours(time) {
+      if (!this.workingSchedules.length) return false;
+
+      // Tìm lịch làm việc của ngày selectedDate
+      const scheduleOfDay = this.workingSchedules.find(sch => sch.date.startsWith(this.selectedDate));
+      if (!scheduleOfDay) return false;
+
+      // Giả sử lịch làm việc có startTime và endTime dưới dạng "HH:mm"
+      const [hour, minute] = time.split(':').map(Number);
+
+      const start = scheduleOfDay.startTime || '08:00';
+      const end = scheduleOfDay.endTime || '17:00';
+
+      const [startHour, startMinute] = start.split(':').map(Number);
+      const [endHour, endMinute] = end.split(':').map(Number);
+
+      const timeValue = hour * 60 + minute;
+      const startValue = startHour * 60 + startMinute;
+      const endValue = endHour * 60 + endMinute;
+
+      return timeValue >= startValue && timeValue <= endValue;
     },
+
+    isDisabled(time) {
+      return this.isPastTime(time) || this.isBookedTime(time) || !this.isWithinWorkingHours(time);
+    },
+
+    async fetchSchedule() {
+      if (!this.selectedDoctor) {
+        this.workingSchedules = [];
+        return;
+      }
+      try {
+        const year = new Date(this.selectedDate).getFullYear();
+        const month = new Date(this.selectedDate).getMonth();
+        const response = await axiosClient.get(`AppointmentSchedule/GetById?id=${this.selectedDoctor}`);
+        if (response.status !== 200) {
+          this.workingSchedules = [];
+          return;
+        }
+        const schedules = response.data.$values || [];
+
+        // Lọc lịch của tháng hiện tại (năm + tháng)
+        this.workingSchedules = schedules.filter(sch => {
+          const d = new Date(sch.date);
+          return d.getFullYear() === year && d.getMonth() === month;
+        });
+
+        console.log("Lịch làm việc bác sĩ tháng:", this.workingSchedules);
+
+      } catch (error) {
+        console.error("Lỗi khi load lịch làm việc:", error);
+        this.workingSchedules = [];
+      }
+    },
+
     async handleDoctorOrDateChange() {
       if (!this.selectedDoctor || !this.selectedDate) return;
+
+      await this.fetchSchedule();
 
       try {
         const response = await this.useService.getAppoinetmentTimeById(this.selectedDoctor);
@@ -144,44 +219,50 @@ export default {
         console.error('Lỗi khi lấy thời gian đã đặt:', err);
       }
     },
-   bookAppointment() {
-  if (!this.selectedDate || !this.selectedTime) {
-    alert('Vui lòng chọn ngày và giờ hẹn!');
-    return;
-  }
 
-  this.appointments.customerid = this.useUser.user.id;
-  this.appointments.dentistid = this.selectedDoctor || null; // Cho phép không chọn bác sĩ
-  this.appointments.appointmentdate = `${this.selectedDate}T${this.selectedTime}:00`;
-  this.appointments.note = this.note;
-
-  console.log("apo", this.appointments);
-
-  this.useService.createAppointment(this.appointments)
-    .then((response) => {
-      if (this.selectedService) {
-        this.appointmentDetail.serviceId = this.selectedService;
-        this.appointmentDetail.appointmentId = response;
-        this.useService.createAppointmentDetail(this.appointmentDetail)
-          .then(() => {
-            alert('Đặt lịch thành công!');
-          })
-          .catch(err => {
-            console.error('Lỗi khi tạo chi tiết lịch:', err);
-          });
-      } else {
-        alert('Đặt lịch thành công! (Không có dịch vụ cụ thể)');
+    bookAppointment() {
+      if (!this.selectedDate || !this.selectedTime) {
+        alert('Vui lòng chọn ngày và giờ hẹn!');
+        return;
       }
 
-      this.selectedDate = new Date().toISOString().split('T')[0];
-      this.selectedDoctor = '';
-      this.selectedService = '';
-    })
-    .catch(err => {
-      console.error('Lỗi khi đặt lịch:', err);
-      alert('Có lỗi xảy ra, vui lòng thử lại!');
-    });
-}
+      this.appointments.customerid = this.useUser.user.id;
+      this.appointments.dentistid = this.selectedDoctor || null; // Cho phép không chọn bác sĩ
+      this.appointments.appointmentdate = `${this.selectedDate}T${this.selectedTime}:00`;
+      this.appointments.note = this.note;
+
+      console.log("Đặt lịch:", this.appointments);
+
+      this.useService.createAppointment(this.appointments)
+        .then((response) => {
+          if (this.selectedService) {
+            this.appointmentDetail.serviceId = this.selectedService;
+            this.appointmentDetail.appointmentId = response;
+            this.useService.createAppointmentDetail(this.appointmentDetail)
+              .then(() => {
+                alert('Đặt lịch thành công!');
+              })
+              .catch(err => {
+                console.error('Lỗi khi tạo chi tiết lịch:', err);
+              });
+          } else {
+            alert('Đặt lịch thành công! (Không có dịch vụ cụ thể)');
+          }
+
+          // Reset form
+          this.selectedDate = new Date().toISOString().split('T')[0];
+          this.selectedDoctor = '';
+          this.selectedService = '';
+          this.selectedTime = '';
+          this.note = '';
+          this.bookedTimes = [];
+          this.workingSchedules = [];
+        })
+        .catch(err => {
+          console.error('Lỗi khi đặt lịch:', err);
+          alert('Có lỗi xảy ra, vui lòng thử lại!');
+        });
+    }
   }
 };
 </script>

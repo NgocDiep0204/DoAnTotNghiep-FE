@@ -149,24 +149,40 @@ export default {
       await this.loadMessages(user.id);
     },
     async loadMessages(receiverId) {
-      try {
-        const res = await fetch(`https://localhost:7282/api/message/${receiverId}`, {
-          headers: { Authorization: `Bearer ${this.token}` }
-        });
-        const data = await res.json();
-        this.messages = data.$values.map(msg => ({
-          messageId: msg.id,
-          senderId: msg.senderId,
-          receiverId: msg.receiverId,
-          text: msg.content,
-          status: 1,
-          sentAt: msg.sentAt
-        })).sort((a, b) => new Date(a.sentAt) - new Date(b.sentAt));
-        this.scrollToBottom();
-      } catch (err) {
-        console.error('Error loading messages:', err);
+  try {
+    const res = await fetch(`https://localhost:7282/api/message/${receiverId}`, {
+      headers: { Authorization: `Bearer ${this.token}` }
+    });
+    const data = await res.json();
+
+    const rawMessages = data.$values.map(msg => ({
+      messageId: msg.id,
+      senderId: msg.senderId,
+      receiverId: msg.receiverId,
+      text: msg.content,
+      status: 1,
+      sentAt: new Date(msg.sentAt).toISOString().slice(0, 19) // chuẩn hóa đến giây
+    }));
+
+    // Loại bỏ tin trùng
+    const uniqueMap = new Map();
+    for (const msg of rawMessages) {
+      const key = `${msg.senderId}-${msg.text}-${msg.sentAt}`;
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, msg);
       }
-    },
+    }
+
+    this.messages = Array.from(uniqueMap.values()).sort(
+      (a, b) => new Date(a.sentAt) - new Date(b.sentAt)
+    );
+
+    this.scrollToBottom();
+  } catch (err) {
+    console.error('Error loading messages:', err);
+  }
+}
+,
     async sendMessage() {
       if (!this.message.trim() || !this.selectedUser) return;
       const content = this.message.trim();

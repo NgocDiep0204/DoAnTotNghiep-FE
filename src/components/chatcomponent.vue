@@ -127,79 +127,94 @@ export default {
       const list = this.$refs.messageList;
       if (list) list.scrollTop = list.scrollHeight;
     },
-    async sendMessage() {
-      if (!this.message.trim()) return;
+async sendMessage() {
+  if (!this.message.trim()) return;
 
-      const text = this.message.trim();
-      const tempMessages = this.receiverId.map((id) => ({
-        messageId: `temp-${Date.now()}-${id}`,
-        senderId: this.senderId,
-        receiverId: id,
-        text,
-        status: 2
+  const text = this.message.trim();
+  const sentAt = new Date().toISOString(); // thời điểm gửi dùng chung
+
+  const tempMessage = {
+    messageId: `temp-${Date.now()}`,
+    senderId: this.senderId,
+    receiverId: this.receiverId.join(','),
+    text,
+    status: 2,
+    sentAt
+  };
+
+  this.messages.push(tempMessage);
+  this.message = '';
+  this.scrollToBottom();
+
+  for (const id of this.receiverId) {
+    try {
+      await this.connection.invoke('SendMessage', id, text);
+
+      await fetch('https://localhost:7282/api/message', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.token}`
+        },
+        body: JSON.stringify({
+          receiverId: id,
+          content: text
+        })
+      });
+
+      tempMessage.status = 1;
+    } catch (err) {
+      console.error(`❌ Lỗi khi gửi cho ${id}:`, err);
+      tempMessage.status = -1;
+    }
+  }
+}
+,
+  async fetchOldMessages() {
+  try {
+    const allMessages = [];
+
+    for (const id of this.receiverId) {
+      const res = await fetch(`https://localhost:7282/api/message/${id}`, {
+        headers: {
+          'Authorization': `Bearer ${this.token}`
+        }
+      });
+
+      if (!res.ok) continue;
+
+      const data = await res.json();
+      const msgs = data.$values.map(msg => ({
+        messageId: msg.id,
+        senderId: msg.senderId,
+        receiverId: msg.receiverId,
+        text: msg.content,
+        status: 1,
+        sentAt: new Date(msg.sentAt).toISOString().slice(0, 19) // chuẩn hóa đến giây
       }));
 
-      this.messages.push(...tempMessages);
-      this.message = '';
-      this.scrollToBottom();
+      allMessages.push(...msgs);
+    }
 
-      for (const id of this.receiverId) {
-        try {
-          await this.connection.invoke('SendMessage', id, text);
-
-          await fetch('https://localhost:7282/api/message', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${this.token}`
-            },
-            body: JSON.stringify({
-              receiverId: id,
-              content: text
-            })
-          });
-
-          const msg = this.messages.find(m => m.receiverId === id && m.status === 2);
-          if (msg) msg.status = 1;
-
-        } catch (err) {
-          console.error(`❌ Lỗi khi gửi cho ${id}:`, err);
-          const msg = this.messages.find(m => m.receiverId === id && m.status === 2);
-          if (msg) msg.status = -1;
-        }
+    // Dùng Map để loại trùng
+    const uniqueMap = new Map();
+    for (const msg of allMessages) {
+      const key = `${msg.senderId}-${msg.text}-${msg.sentAt}`;
+      if (!uniqueMap.has(key)) {
+        uniqueMap.set(key, msg);
       }
-    },
-    async fetchOldMessages() {
-      try {
-        const allMessages = [];
-        for (const id of this.receiverId) {
-          const res = await fetch(`https://localhost:7282/api/message/${id}`, {
-            headers: {
-              'Authorization': `Bearer ${this.token}`
-            }
-          });
+    }
 
-          if (!res.ok) continue;
+    this.messages = Array.from(uniqueMap.values()).sort(
+      (a, b) => new Date(a.sentAt) - new Date(b.sentAt)
+    );
 
-          const data = await res.json();
-          const msgs = data.$values.map(msg => ({
-            messageId: msg.id,
-            senderId: msg.senderId,
-            receiverId: msg.receiverId,
-            text: msg.content,
-            status: 1,
-            sentAt: msg.sentAt
-          }));
-
-          allMessages.push(...msgs);
-        }
-
-        this.messages = allMessages.sort((a, b) => new Date(a.sentAt) - new Date(b.sentAt));
-        this.scrollToBottom();
-      } catch (err) {
-        console.error('❌ Lỗi khi tải tin nhắn:', err);
-      }
-    },
+    this.scrollToBottom();
+  } catch (err) {
+    console.error('❌ Lỗi khi tải tin nhắn:', err);
+  }
+}
+,
     setupConnection(userId) {
       this.senderId = userId;
 

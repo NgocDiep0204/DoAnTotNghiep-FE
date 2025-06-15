@@ -1,7 +1,6 @@
 <template>
   <div class="p-4 max-w-6xl mx-auto bg-white shadow rounded-xl flex space-x-6">
 
-    <!-- Phần đăng ký lịch làm việc (bên trái 2/3) -->
     <div class="w-2/3">
       <div class="flex justify-between items-center mb-4">
         <div class="text-2xl font-bold text-gray-700">
@@ -43,16 +42,18 @@
 
           <select
             v-model="day.status"
+            :disabled="day.disabled"
             class="border rounded px-2 py-1 w-full bg-white"
             @change="onStatusChange(day)"
           >
             <option value="OFF">OFF</option>
             <option value="Free">Free</option>
-            <option value="Khung gio">Khung giờ làm</option>
+            <option value="WorkingShift">Ca làm việc</option>
           </select>
 
-          <div
-            v-if="day.status === 'Khung gio'"
+
+          <!-- <div
+            v-if="day.status === 'WorkingShift'"
             class="flex space-x-2 items-center mt-2"
           >
             <input
@@ -74,7 +75,25 @@
                 @input="day.isModified = true"
 
             />
+          </div> -->
+
+          <div
+            v-if="day.status === 'WorkingShift'"
+            class="flex space-x-2 items-center mt-2"
+          >
+            <select
+              v-model="day.shift"
+              @change="updateShiftTime(day)"
+              class="border px-2 py-1 rounded w-full"
+              :disabled="day.disabled"
+            >
+              <option disabled value="">Chọn ca làm việc</option>
+              <option value="morning">Ca sáng (08:00 - 11:00)</option>
+              <option value="afternoon">Ca chiều (13:00 - 18:00)</option>
+            </select>
+
           </div>
+
         </li>
       </ul>
     </div>
@@ -115,15 +134,17 @@
 import axiosClient from '../../axiosClient';
 import { useDentistStore } from '../../store/dentist';
 import {useAuthStore} from '../../store/user/authstore';
+import { useServiceStore } from '../../store/service';
 export default {
   data() {
     return {
       currentMonth: new Date().getMonth(),
       currentYear: new Date().getFullYear(),
       daysOfMonth: [],
-      dentistId: "", // TODO: thay id thật
-      savedSchedules: [], // lưu dữ liệu đã load từ server
-      availableMonths: []
+      dentistId: "", 
+      savedSchedules: [], 
+      availableMonths: [],
+      unavailableTimes: [],
     };
   },
   computed: {
@@ -141,7 +162,68 @@ export default {
       }));
     },
   },
+  watch: {
+  currentMonth() {
+    this.fetchSchedule();
+  },
+  currentYear() {
+    this.fetchSchedule();
+  }
+},
+
   methods: {
+
+   validateWeeklyScheduleRules() {
+  const errors = [];
+  const weeks = {};
+
+  this.daysOfMonth.forEach((day) => {
+    const week = day.weekOfYear;
+    if (!weeks[week]) weeks[week] = [];
+    weeks[week].push(day);
+  });
+
+  for (const [weekNumber, days] of Object.entries(weeks)) {
+    const offDays = days.filter(d => d.status === 'OFF');
+    const workingShifts = days.filter(d => d.status === 'WorkingShift' && d.shift); // phải có ca
+
+    const saturday = days.find(d => d.dayOfWeek === 6 && d.status === 'OFF');
+    const sunday = days.find(d => d.dayOfWeek === 7 && d.status === 'OFF');
+
+    const numOffDays = offDays.length;
+
+    const numOffShifts = workingShifts.filter(w => w.shift === '').length + offDays.reduce((count, d) => count + 2, 0);
+
+    if (numOffDays > 2) {
+      errors.push(`Tuần ${weekNumber} nghỉ quá 2 ngày.`);
+    }
+
+    if (numOffShifts > 4) {
+      errors.push(`Tuần ${weekNumber} nghỉ quá 4 ca.`);
+    }
+
+    if (saturday && sunday) {
+      errors.push(`Tuần ${weekNumber} không được nghỉ cả Thứ 7 và Chủ nhật.`);
+    }
+
+    if (numOffDays === 1 && numOffShifts > 2) {
+      errors.push(`Tuần ${weekNumber} đã nghỉ 1 ngày thì chỉ được nghỉ thêm tối đa 2 ca.`);
+    }
+
+    // ✅ Bổ sung: kiểm tra số ngày đăng ký có ca
+    const workingShiftDays = days.filter(d => d.status === 'WorkingShift' && d.shift).length;
+
+    if (numOffDays === 1 && workingShiftDays > 2) {
+      errors.push(`Tuần ${weekNumber} đã nghỉ 1 ngày thì chỉ được đăng ký làm có ca tối đa 2 ngày.`);
+    }
+
+    if (numOffDays === 0 && workingShiftDays > 4) {
+      errors.push(`Tuần ${weekNumber} không được đăng ký làm có ca quá 4 ngày.`);
+    }
+  }
+
+  return errors;
+},
     getDayOfMonth(dateString) {
       return new Date(dateString).getDate();
     },
@@ -152,7 +234,7 @@ export default {
       } else {
         if (day.status === "Free") baseClass += "bg-green-50";
         else if (day.status === "OFF") baseClass += "bg-red-50";
-        else if (day.status === "Khung gio") baseClass += "bg-blue-50";
+        else if (day.status === "WorkingShift") baseClass += "bg-blue-50";
       }
       return baseClass;
     },
@@ -217,22 +299,34 @@ async fetchSchedule() {
 
         const scheduleForDay = apiSchedules.find(sch => sch.date === date.toISOString().split("T")[0]);
 
+         const today = new Date();
+today.setHours(0, 0, 0, 0); // đặt về 0h để so sánh chính xác
+const isPast = date <= today;
+
+  
         let status = "Free";
         let startTime = "08:00";
         let endTime = "18:00";
+        let shift = "";
 
         if (scheduleForDay) {
-          if (scheduleForDay.isDayOff) {
-            status = "OFF";
-          } else if (scheduleForDay.isFree) {
-            status = "Free";
-          } else {
-            status = "Khung gio";
-            startTime = scheduleForDay.startTime.substring(0, 5);
-            endTime = scheduleForDay.endTime.substring(0, 5);
-          }
-        }
+  if (scheduleForDay.isDayOff) {
+    status = "OFF";
+  } else if (scheduleForDay.isFree) {
+    status = "Free";
+  } else {
+    status = "WorkingShift";
+    startTime = scheduleForDay.startTime.substring(0, 5);
+    endTime = scheduleForDay.endTime.substring(0, 5);
 
+    // Suy ra shift
+    if (startTime === "08:00" && endTime === "11:00") {
+      shift = "morning";
+    } else if (startTime === "13:00" && endTime === "18:00") {
+      shift = "afternoon";
+    }
+  }
+}
         days.push({
           id: scheduleForDay?.id || null,
           date: date.toISOString().split("T")[0],
@@ -242,7 +336,10 @@ async fetchSchedule() {
           status,
           startTime,
           endTime,
+          shift,
           belongsToMonth: true,
+          disabled: isPast, 
+
         });
       }
 
@@ -250,13 +347,22 @@ async fetchSchedule() {
     },
 
     onStatusChange(day) {
-      if (day.status !== "Khung gio") {
+      if (day.status !== "WorkingShift") {
         day.startTime = "08:00";
         day.endTime = "18:00";
       }
-        day.isModified = true; // đánh dấu đã chỉnh sửa
-
+        day.isModified = true; 
     },
+    updateShiftTime(day) {
+  if (day.shift === "morning") {
+    day.startTime = "08:00";
+    day.endTime = "11:00";
+  } else if (day.shift === "afternoon") {
+    day.startTime = "13:00";
+    day.endTime = "18:00";
+  }
+  day.isModified = true; // đánh dấu để lưu
+},
 changeMonth(delta) {
   let newMonth = this.currentMonth + delta;
   let newYear = this.currentYear;
@@ -273,7 +379,14 @@ changeMonth(delta) {
     this.fetchSchedule();
 },
 
-async saveSchedule() {
+ async saveSchedule() {
+    const errors = this.validateWeeklyScheduleRules();
+  if (errors.length > 0) {
+    alert("Lỗi đăng ký lịch:\n" + errors.join("\n"));
+    return;
+  }
+
+
   const dataToSave = this.daysOfMonth
     .filter(day => day.isModified)
     .map((day) => {
@@ -294,8 +407,45 @@ async saveSchedule() {
         endTime: day.endTime + ':00',
         id: day.id,
         dentistId: this.dentistId,
+        status: day.status,
+        oldStatus: day.oldStatus
       };
     });
+
+  const formatDate = (dateStr) => new Date(dateStr).toISOString().split('T')[0];
+const getTime = (dateStr) => new Date(dateStr).toTimeString().substring(0, 5);
+
+for (const item of dataToSave) {
+  const itemDate = formatDate(item.date);
+  const sameDayAppointments = this.unavailableTimes
+    .filter(u => formatDate(u) === itemDate)
+    .map(u => getTime(u));
+
+  const hasMorning = sameDayAppointments.some(t => t >= "08:00" && t < "12:00");
+  const hasAfternoon = sameDayAppointments.some(t => t >= "13:00" && t < "17:00");
+
+  const isSwitchingToOff = item.status === "OFF" && item.oldStatus !== "OFF";
+  if (isSwitchingToOff && (hasMorning || hasAfternoon)) {
+    alert(`Ngày ${itemDate} đã có lịch hẹn. Không thể chọn OFF.`);
+    return;
+  }
+
+  const isShift = item.status === "WorkingShift";
+  const isMorningShift = item.startTime < "12:00:00";
+  const isAfternoonShift = item.startTime >= "13:00:00";
+
+  if (isShift) {
+    if ( isAfternoonShift && hasMorning) {
+      alert(`Ngày ${itemDate} đã có lịch hẹn buổi sáng. Vui lòng chọn lại.`);
+      return;
+    }
+    if (isMorningShift && hasAfternoon) {
+      alert(`Ngày ${itemDate} đã có lịch hẹn buổi chiều. Vui lòng chọn lại.`);
+      return;
+    }
+  }
+}
+
 
   const monthGroups = {};
   for (const item of dataToSave) {
@@ -308,11 +458,9 @@ async saveSchedule() {
   try {
     for (const monthKey of Object.keys(monthGroups)) {
       const [year, month] = monthKey.split('-').map(Number);
-
       const anySchedule = monthGroups[monthKey].find(i => !i.id);
 
       if (anySchedule) {
-        // Tạo tháng mới
         const res = await axiosClient.post('/AppointmentSchedule/CreateForMonth', {
           year,
           month,
@@ -324,11 +472,10 @@ async saveSchedule() {
           return;
         }
 
-        return this.saveSchedule(); 
+        return this.saveSchedule(); // Gọi lại sau khi tạo tháng
       }
     }
 
-    // Tiếp tục update các ngày
     for (const i of dataToSave) {
       const response = await axiosClient.put('/AppointmentSchedule/Update', i);
       if (response.status !== 200) {
@@ -346,6 +493,8 @@ async saveSchedule() {
   }
 }
 
+
+
 },
 
   async mounted() {
@@ -353,6 +502,9 @@ async saveSchedule() {
     var dentist = await useDentistStore().getDentistByUserId(userid);
     this.dentistId = dentist.id;
     this.fetchSchedule();
+    this.unavailableTimes = await useServiceStore().getAppoinetmentTimeById(this.dentistId);
+    console.log(this.unavailableTimes, 'unavailableTimes');
+
   },
 };
 </script>

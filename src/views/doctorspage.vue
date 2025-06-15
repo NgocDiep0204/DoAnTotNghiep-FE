@@ -1,93 +1,77 @@
 <template>
-  <div class="max-w-full mx-auto bg-white shadow-md overflow-hidden pl-8" v-if="dentist">
-    <div class="md:flex gap-4">
-      <!-- Ảnh và chuyên môn -->
-      <div class="md:w-2/3">
-        <strong class="text-xl text-gray-700 mb-3 block">Bác sĩ {{ dentist.user.fullName }}</strong>
-
-        <div class="w-full max-h-[700px] overflow-hidden">
-          <img
-            class="w-full h-[700px] object-cover object-top"
-            :src="dentist.user.imageUrl"
-            alt="Bác sĩ"
-          />
-        </div>
-
-        <!-- Thông tin dưới ảnh -->
-        <div class="bg-blue-900 text-white p-4 flex justify-start gap-x-8">
-          <div class="flex flex-col text-left w-1/2">
-            <p class="text-sm">Chuyên môn chính:</p>
-            <p class="font-bold text-sm">{{ dentist.speacialty }}</p>
-
-            <div v-if="dentist.postgraduates" class="mt-2">
-              <p class="text-sm">Bằng cấp sau đại học:</p>
-              <p class="font-bold text-sm">• {{ dentist.postgraduates }}</p>
-            </div>
-          </div>
-
-          <div class="flex flex-col text-left w-1/2">
-            <p class="text-sm">Kinh nghiệm:</p>
-            <p class="font-bold text-sm">{{ getYearsExperience(dentist.years) }}</p>
-
-            <div class="mt-2">
-              <p class="text-sm">Giá khám:</p>
-              <p class="font-bold text-sm">{{ formatPrice(dentist.price) }}</p>
-            </div>
-          </div>
-        </div>
+  <section class="bg-blue-100 py-10 h-[20%]">
+    <div class=" mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-8">
+      <!-- Phần nội dung -->
+      <div class="md:w-1/2 space-y-4">
+        <h1 class="text-3xl md:text-4xl font-bold text-blue-900">Đội ngũ bác sĩ</h1>
+        <p class="text-gray-700 text-base">
+          Trang bao gồm tất cả các bác sĩ và trợ tá tại Nha khoa
+        </p>
       </div>
 
-      <!-- Dịch vụ nổi bật + Quote -->
-      <div class="md:w-1/3 pr-8">
-        <div class="w-full max-w-md mx-auto bg-white">
-          <h2 class="font-bold text-gray-800 text-base mb-4 border-b pb-2">Dịch vụ nổi bật</h2>
+      <!-- Ảnh bác sĩ -->
+      <div class="md:w-1/2 relative">
+        <img
+          src="/src/assets/img/allbs.png"
+          alt="Đội ngũ bác sĩ"
+          class="w-[90%] object-contain pl-32"
+        />
 
-          <div v-for="(service, index) in useService.services.slice(0, 6)" :key="index">
-            <div
-              @click="selectedIndex = index"
-              class="flex justify-between items-center px-4 py-3 cursor-pointer transition-colors duration-200 mb-2 
-                bg-[#F5F5F5] hover:bg-blue-900 hover:text-white"
-            >
-              <span class="text-sm font-medium">{{ service.serviceName }}</span>
-              <span class="text-xl font-bold">+</span>
-            </div>
+      </div>
+    </div>
+  </section>
+  <div v-for="(item, index) in dentist" :key="index" class="max-w-6xl mx-auto p-1 bg-white shadow-md mb-6">
+    <h2 class="text-xl font-bold text-gray-800 mb-4">Nha sĩ {{ item.user?.fullName }}</h2>
+
+    <!-- GRID 2 cột -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-[1px] items-stretch">
+      <!-- Ảnh bác sĩ -->
+      <div class="flex flex-col items-center text-center">
+        <img
+          :src="item.user?.imageUrl"
+          alt="Ảnh bác sĩ"
+          class="w-[90%] h-full max-h-[500px] object-cover "
+        />
+      </div>
+
+      <!-- Thông tin -->
+      <div class="flex flex-col justify-between space-y-[1px]">
+        <!-- Học vấn -->
+        <div class="bg-blue-50 p-4 w-full m-[1px] h-[130%]">
+          <h3 class="font-semibold text-gray-800 mb-2">Học vấn và đào tạo</h3>
+          <div v-for="(education, i) in getStringPart(item.education)" :key="i">
+            <p class="text-sm text-gray-700">• {{ education }}</p>
           </div>
         </div>
 
-        <div class="p-10 bg-blue-900 shadow text-white mt-6 self-start">
-          <p class="text-2xl font-semibold leading-relaxed">
-            Hãy trở thành<br />
-            phiên bản hoàn<br />
-            hảo nhất của <br />
-            chính mình
-          </p>
-          <router-link
-            class="inline-flex text-white hover:underline text-sm font-medium mt-3 block cursor-pointer"
-            :to="{ name: 'bookdoctors' }"
-          >
-            Đặt lịch tư vấn
-          </router-link>
+        <!-- Chuyên môn và kinh nghiệm -->
+        <div class="grid grid-cols-2 gap-[1px] text-sm text-white">
+          <div class="bg-blue-900 p-4">
+            <p><strong>Chuyên môn chính:</strong> {{ item.speacialty }}</p>
+            <p v-if="item.postgraduates">
+              <strong>Bằng cấp sau đại học:</strong> {{ item.postgraduates }}
+            </p>
+          </div>
+          <div class="bg-blue-900 p-4">
+            <p><strong>Kinh nghiệm:</strong> {{ getYearsExperience(item.years) }}</p>
+            <p><strong>Giá khám:</strong> {{ formatPrice(item.price) }}</p>
+
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Giới thiệu + Học vấn + Chứng chỉ -->
-    <div class="flex flex-col my-5 md:flex-row gap-4">
-      <div class="md:w-2/3">
-        <strong class="text-blue-900 pb-4">Giới thiệu</strong>
-        <p class="p-2">{{ dentist.introduce }}</p>
-
-        <strong class="text-blue-900 pb-4">Học vấn và đào tạo</strong>
-        <div v-for="(education, index) in getStringPart(dentist.education)" :key="index">
-          <p class="p-2">• {{ education }}</p>
-        </div>
-
-        <strong class="text-blue-900 pb-4">Chứng chỉ</strong>
-        <div v-for="(certificate, index) in getStringPart(dentist.certificate)" :key="index">
-          <p class="p-2">• {{ certificate }}</p>
-        </div>
-      </div>
+    <!-- Giới thiệu -->
+    <div class="mt-4">
+      <p class="text-lg text-gray-900">{{ item.introduce }}</p>
     </div>
+    <router-link
+      class="inline-flex text-blue-600 hover:underline text-sm font-medium mt-3  cursor-pointer"
+      :to="{ name: 'doctorprofile', params: { id: item.id } }"
+      @click.native="selectedIndex = index"
+    >
+      Xem chi tiết nha sĩ
+    </router-link>
   </div>
 </template>
 
@@ -99,7 +83,7 @@ import { splitCommaToArray, calculateYearsExperience } from '../utils/stringhelp
 export default {
   data() {
     return {
-      dentist: null,
+      dentist: [],
       selectedIndex: 0,
     }
   },
@@ -123,11 +107,12 @@ export default {
       return useServiceStore()
     },
   },
-  mounted() {
-    this.useDentist.getdentistbyid(this.$route.params.id).then((res) => {
-      this.dentist = res
-    })
+  async mounted() {
+    var result = await   this.useDentist.getDentistbyStatus()
+    this.dentist = result
+    
     this.useService.getServiceByStatus(1)
+    console.log('lll',this.dentist)
   },
 }
 </script>

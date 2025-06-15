@@ -258,8 +258,9 @@ export default {
     console.log('Form update data:', this.formupdate)
     if (this.user) {
       // Cập nhật tài khoản
-      await this.authStore.UpdateUserProfiles(this.formupdate, this.form.email)
-       await this.authStore.updateUserProfileByUserId(
+      var update = await this.authStore.UpdateUserProfiles(this.formupdate, this.form.email, this.user.id)
+      if(update ==true){
+        await this.authStore.updateUserProfileByUserId(
         this.user.id,
         this.form.email,
         this.form.fullName,
@@ -270,17 +271,25 @@ export default {
         this.form.role
       )
       alert('Cập nhật tài khoản thành công!')
+      }
+      else{
+        alert(update.message)
+        return
+      }
+       
     } else {
       // Thêm mới tài khoản
-      await this.authStore.register(this.form)
-      await this.authStore.UpdateUserProfiles(this.formupdate, this.form.email)
-      alert('Tạo tài khoản thành công!')
+     var reg =  await this.authStore.register(this.form)
+     if(reg == true){
+      var res = await this.authStore.UpdateUserProfiles(this.formupdate, this.form.email, this.authStore.userId)
+        alert('Tạo tài khoản thành công!')
       this.form.fullName = '',
       this.form.email = '',
       this.form.role = '',
       this.formupdate.gender = ''
       this.imagePreview = ''
     }
+  }
    
     this.$emit('created', { ...this.form })
   } catch (error) {

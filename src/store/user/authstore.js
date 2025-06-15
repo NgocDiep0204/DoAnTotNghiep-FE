@@ -103,7 +103,7 @@ export const useAuthStore = defineStore('auth', {
         return false;
       }
     },
-    async UpdateUserProfiles(updadeuser, email){
+    async UpdateUserProfiles(updadeuser, email, id) {
       const formData = new FormData();
       formData.append("fullName", updadeuser.fullName);
       formData.append("gender", updadeuser.gender); 
@@ -115,7 +115,7 @@ export const useAuthStore = defineStore('auth', {
         console.log(`${key}:`, value);
       }
       try {
-        const response = await axiosClient.put(`ApplicationUser/UpdateUserProfiles?email=${email}`, formData);
+        const response = await axiosClient.put(`ApplicationUser/UpdateUserProfiles?email=${email}&id=${id}`, formData);
         if (response.status === 200) {
           return true;
         } else {
@@ -123,21 +123,6 @@ export const useAuthStore = defineStore('auth', {
           return false;
         }
       } catch (error) {
-        console.error("Error updating profile:", error);
-        return false;
-      }
-    },
-
-    async updateUserProfileByUserId(id, email, fullname, status) {
-      try{
-        const response = await axiosClient.put(`ApplicationUser/UpdateUserById?id=${id}&email=${email}&fullname=${fullname}&status=${status}`);
-        if (response.status === 200) {
-          return true;
-        } else {
-          console.error("Lỗi cập nhật:", response.data.StatusMessage);
-          return false;
-        }
-      }catch (error) {
         if (error.response) {
     
           if (error.response.status === 409) {
@@ -149,8 +134,29 @@ export const useAuthStore = defineStore('auth', {
     
         return { success: false, message: "Lỗi không xác định khi xác minh OTP" };
       }
-     
     },
+
+    async updateUserProfileByUserId(id, email, fullname, status) {
+  try {
+    const response = await axiosClient.put(
+      `ApplicationUser/UpdateUserById?id=${id}&email=${email}&fullname=${fullname}&status=${status}`
+    );
+
+    if (response.status === 200) {
+      return { success: true, message: "Cập nhật thành công" };
+    }
+  } catch (error) {
+    if (error.response) {
+      if (error.response.status === 409) {
+        return { success: false, message: "Email đã được sử dụng!" };
+      } else if (error.response.status === 400) {
+        return { success: false, message: "Không tìm thấy người dùng" };
+      }
+    }
+
+    return { success: false, message: "Lỗi không xác định khi xác minh" };
+  }
+},
 
     async getUserByRole(role){
       try {

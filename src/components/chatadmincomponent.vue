@@ -1,13 +1,5 @@
 <template>
   <div class="flex h-screen">
-    <!-- Toast Notification -->
-    <div
-      v-if="toast.visible"
-      class="fixed bottom-5 right-5 bg-gray-800 text-white px-4 py-2 rounded shadow-lg animate-fade-in-out z-50"
-    >
-      {{ toast.message }}
-    </div>
-
     <!-- Contacts Sidebar -->
     <div class="w-1/4 bg-gray-100 p-4 overflow-y-auto">
       <h2 class="text-lg font-bold mb-4">Liên hệ</h2>
@@ -19,11 +11,7 @@
           :class="['p-2 cursor-pointer rounded hover:bg-gray-300 flex items-center justify-between', selectedUser?.id === user.id ? 'bg-blue-200' : '']"
         >
           <span>{{ user.userName || 'Unknown User' }}</span>
-          <span
-            v-if="user.unread"
-            class="w-3 h-3 bg-red-600 rounded-full ml-2"
-            title="Tin nhắn mới chưa đọc"
-          ></span>
+          <span v-if="user.unread" class="w-3 h-3 bg-red-600 rounded-full ml-2" title="Tin nhắn mới"></span>
         </li>
       </ul>
     </div>
@@ -36,43 +24,57 @@
 
       <div ref="messageList" class="flex-1 p-4 overflow-y-auto space-y-2 flex flex-col">
         <div
-          v-for="msg in messages"
-          :key="msg.messageId"
-          :class="[
-            'flex flex-col max-w-[70%]',
-            msg.senderId === currentUserId ? 'items-end self-end' : 'items-start self-start'
-          ]"
+          v-for="item in groupedMessages"
+          :key="item.type === 'divider' ? 'divider-' + item.date : item.data.messageId"
         >
-          <div
-            :class="msg.senderId === currentUserId
-              ? 'bg-blue-500 text-white p-2 rounded'
-              : 'bg-gray-300 p-2 rounded'"
-          >
-            {{ msg.text }}
+          <!-- Date Divider -->
+          <div v-if="item.type === 'divider'" class="flex justify-center my-2 text-sm text-gray-500">
+            {{ item.date }}
           </div>
 
-          <small
-            class="mt-1 text-xs"
-            :class="{
-              'text-gray-400': msg.status === 1,
-              'text-yellow-500': msg.status === 0,
-              'text-red-500': msg.status === -1
-            }"
-          >
-            <template v-if="msg.senderId === currentUserId">
-              {{
-                msg.status === 1
-                  ? 'Đã gửi'
-                  : msg.status === 0
-                  ? 'Đang gửi...'
-                  : 'Lỗi'
-              }}
-              <span v-if="msg.status !== 1"> - {{ formatSentAt(msg.sentAt) }}</span>
-            </template>
-            <template v-else>
-              {{ formatSentAt(msg.sentAt) }}
-            </template>
-          </small>
+          <!-- Message -->
+<div
+  v-else
+  @click="toggleTime(item.data.messageId)"
+  :class="[
+    'flex flex-col cursor-pointer',
+    item.data.senderId === currentUserId ? 'items-end self-end ml-auto' : 'items-start self-start mr-auto',
+    'max-w-[70%]'
+  ]"
+>
+
+            <div
+              :class="item.data.senderId === currentUserId
+                ? 'bg-blue-500 text-white p-2 rounded'
+                : 'bg-gray-300 p-2 rounded'"
+            >
+              {{ item.data.text }}
+            </div>
+
+            <!-- Thời gian gửi (ẩn/hiện khi click) -->
+            <small
+              v-if="showTimeMessages.has(item.data.messageId)"
+              class="mt-1 text-xs"
+              :class="{
+                'text-gray-400': item.data.status === 1,
+                'text-yellow-500': item.data.status === 0,
+                'text-red-500': item.data.status === -1
+              }"
+            >
+              <template v-if="item.data.senderId === currentUserId">
+                {{
+                  item.data.status === 1
+                    ? 'Đã gửi'
+                    : item.data.status === 0
+                    ? 'Đang gửi...'
+                    : 'Lỗi'
+                }} - {{ formatSentAt(item.data.sentAt) }}
+              </template>
+              <template v-else>
+                {{ formatSentAt(item.data.sentAt) }}
+              </template>
+            </small>
+          </div>
         </div>
       </div>
 
@@ -81,11 +83,11 @@
         <input
           v-model="message"
           @keyup.enter="sendMessage"
-          placeholder="Type a message..."
+          placeholder="Nhập tin nhắn..."
           class="flex-1 border border-gray-400 rounded px-4 py-2 mr-2"
         />
         <button @click="sendMessage" class="bg-blue-500 text-white px-4 py-2 rounded">
-          Send
+          Gửi
         </button>
       </div>
     </div>
@@ -96,6 +98,7 @@
 import * as signalR from '@microsoft/signalr';
 
 export default {
+  name: 'ChatWindow',
   data() {
     return {
       contacts: [],
@@ -105,10 +108,7 @@ export default {
       currentUserId: '',
       token: localStorage.getItem('token'),
       connection: null,
-      toast: {
-        visible: false,
-        message: ''
-      }
+      showTimeMessages: new Set()
     };
   },
   computed: {
@@ -118,6 +118,26 @@ export default {
         const bTime = b.lastMessageTime ? new Date(b.lastMessageTime) : 0;
         return bTime - aTime;
       });
+    },
+    groupedMessages() {
+      const result = [];
+      let lastDate = null;
+
+      for (let i = 0; i < this.messages.length; i++) {
+        const msg = this.messages[i];
+        const msgDate = new Date(msg.sentAt).toLocaleDateString('vi-VN');
+
+        const nextMsg = this.messages[i + 1];
+        const nextDate = nextMsg ? new Date(nextMsg.sentAt).toLocaleDateString('vi-VN') : null;
+
+        result.push({ type: 'message', data: msg });
+
+        if (msgDate !== nextDate || i === this.messages.length - 1) {
+          result.push({ type: 'divider', date: msgDate });
+        }
+      }
+
+      return result;
     }
   },
   async mounted() {
@@ -126,83 +146,53 @@ export default {
     this.initSignalR();
   },
   methods: {
-    formatSentAt(datetime) {
-      const now = new Date();
-      const sent = new Date(datetime);
-      const diff = Math.floor((now - sent) / 1000);
-      if (diff < 60) return `${diff} giây trước`;
-      const mins = Math.floor(diff / 60);
-      if (mins < 60) return `${mins} phút trước`;
-      const hours = Math.floor(mins / 60);
-      if (hours < 24) return `${hours} giờ trước`;
-      const days = Math.floor(hours / 24);
-      return `${days} ngày trước`;
-    },
     async fetchCurrentUser() {
-      try {
-        const res = await fetch('https://localhost:7282/api/ApplicationUser/GetUserProfile', {
-          headers: { Authorization: `Bearer ${this.token}` }
-        });
-        const data = await res.json();
-        this.currentUserId = data.id;
-      } catch (err) {
-        console.error('Error fetching current user:', err);
-      }
+      const res = await fetch('https://localhost:7282/api/ApplicationUser/GetUserProfile', {
+        headers: { Authorization: `Bearer ${this.token}` }
+      });
+      const data = await res.json();
+      this.currentUserId = data.id;
     },
     async fetchContacts() {
-      try {
-        const res = await fetch(`https://localhost:7282/api/message/contact/${this.currentUserId}`, {
-          headers: { Authorization: `Bearer ${this.token}` }
-        });
-        const data = await res.json();
-        this.contacts = (data.$values || []).map(user => ({
-          ...user,
-          unread: false,
-          lastMessageTime: null
-        }));
-      } catch (err) {
-        console.error('Error fetching contacts:', err);
-      }
+      const res = await fetch(`https://localhost:7282/api/message/contact/${this.currentUserId}`, {
+        headers: { Authorization: `Bearer ${this.token}` }
+      });
+      const data = await res.json();
+      this.contacts = (data.$values || []).map(user => ({
+        ...user,
+        unread: false,
+        lastMessageTime: null
+      }));
     },
     async selectUser(user) {
       this.selectedUser = user;
       const index = this.contacts.findIndex(c => c.id === user.id);
-      if (index !== -1) {
-        this.contacts[index].unread = false;
-      }
+      if (index !== -1) this.contacts[index].unread = false;
       await this.loadMessages(user.id);
     },
     async loadMessages(receiverId) {
-      try {
-        const res = await fetch(`https://localhost:7282/api/message/${receiverId}`, {
-          headers: { Authorization: `Bearer ${this.token}` }
-        });
-        const data = await res.json();
-        const raw = data.$values.map(msg => ({
-          messageId: msg.id,
-          senderId: msg.senderId,
-          receiverId: msg.receiverId,
-          text: msg.content,
-          status: 1,
-          sentAt: new Date(msg.sentAt).toISOString()
-        }));
-        const unique = new Map();
-        for (const msg of raw) {
-          const key = `${msg.senderId}-${msg.text}-${msg.sentAt}`;
-          if (!unique.has(key)) unique.set(key, msg);
-        }
-        this.messages = Array.from(unique.values()).sort(
-          (a, b) => new Date(a.sentAt) - new Date(b.sentAt)
-        );
-        const lastMsg = this.messages[this.messages.length - 1];
-        const idx = this.contacts.findIndex(c => c.id === receiverId);
-        if (idx !== -1 && lastMsg) {
-          this.contacts[idx].lastMessageTime = lastMsg.sentAt;
-        }
-        this.scrollToBottom();
-      } catch (err) {
-        console.error('Error loading messages:', err);
+      const res = await fetch(`https://localhost:7282/api/message/${receiverId}`, {
+        headers: { Authorization: `Bearer ${this.token}` }
+      });
+      const data = await res.json();
+      const raw = data.$values.map(msg => ({
+        messageId: msg.id,
+        senderId: msg.senderId,
+        receiverId: msg.receiverId,
+        text: msg.content,
+        status: 1,
+        sentAt: new Date(msg.sentAt).toISOString()
+      }));
+
+      const unique = new Map();
+      for (const msg of raw) {
+        const key = `${msg.senderId}-${msg.text}-${msg.sentAt}`;
+        if (!unique.has(key)) unique.set(key, msg);
       }
+      this.messages = Array.from(unique.values()).sort(
+        (a, b) => new Date(a.sentAt) - new Date(b.sentAt)
+      );
+      this.scrollToBottom();
     },
     async sendMessage() {
       if (!this.message.trim() || !this.selectedUser) return;
@@ -224,15 +214,8 @@ export default {
       try {
         await this.connection.invoke('SendMessage', receiverId, content);
         const index = this.messages.findIndex(m => m.messageId === temp.messageId);
-        if (index !== -1) {
-          this.messages[index].status = 1;
-          const contactIdx = this.contacts.findIndex(c => c.id === receiverId);
-          if (contactIdx !== -1) {
-            this.contacts[contactIdx].lastMessageTime = new Date();
-          }
-        }
-      } catch (err) {
-        console.error('Error sending message:', err);
+        if (index !== -1) this.messages[index].status = 1;
+      } catch {
         const index = this.messages.findIndex(m => m.messageId === temp.messageId);
         if (index !== -1) this.messages[index].status = -1;
       }
@@ -245,50 +228,19 @@ export default {
         .withAutomaticReconnect()
         .build();
 
-      this.connection.start()
-        .then(() => console.log('✅ Connected to SignalR'))
-        .catch(err => console.error('❌ SignalR connection error:', err));
+      this.connection.start().catch(console.error);
 
       this.connection.on('ReceiveMessage', (message) => {
-        const msgTime = new Date(message.sentAt);
-        const otherUserId = message.senderId === this.currentUserId
-          ? message.receiverId
-          : message.senderId;
-
-        if (message.senderId === this.selectedUser?.id || message.receiverId === this.selectedUser?.id) {
-          this.messages.push({
-            messageId: message.id,
-            senderId: message.senderId,
-            receiverId: message.receiverId,
-            text: message.content,
-            sentAt: message.sentAt,
-            status: 1
-          });
-          this.scrollToBottom();
-
-          const idx = this.contacts.findIndex(c => c.id === this.selectedUser?.id);
-          if (idx !== -1) {
-            this.contacts[idx].unread = false;
-            this.contacts[idx].lastMessageTime = msgTime;
-          }
-        } else {
-          const idx = this.contacts.findIndex(c => c.id === otherUserId);
-          if (idx !== -1) {
-            this.contacts[idx].unread = true;
-            this.contacts[idx].lastMessageTime = msgTime;
-          } else {
-            this.contacts.push({
-              id: otherUserId,
-              userName: 'New User',
-              unread: true,
-              lastMessageTime: msgTime
-            });
-          }
-        }
-
-        if (message.senderId !== this.currentUserId) {
-          this.showToast(`Tin nhắn mới từ ${this.selectedUser?.fullName || 'Người dùng'}`);
-        }
+        const msg = {
+          messageId: message.id,
+          senderId: message.senderId,
+          receiverId: message.receiverId,
+          text: message.content,
+          sentAt: message.sentAt,
+          status: 1
+        };
+        this.messages.push(msg);
+        this.scrollToBottom();
       });
     },
     scrollToBottom() {
@@ -297,30 +249,32 @@ export default {
         if (el) el.scrollTop = el.scrollHeight;
       });
     },
-    showToast(msg) {
-      this.toast.message = msg;
-      this.toast.visible = true;
-      setTimeout(() => {
-        this.toast.visible = false;
-      }, 3000);
+    formatSentAt(datetime) {
+      const sent = new Date(datetime);
+      const now = new Date();
+      const diff = Math.floor((now - sent) / 1000);
+      if (diff < 60) return 'Vừa xong';
+      const mins = Math.floor(diff / 60);
+      if (mins < 60) return `${mins} phút trước`;
+      const hours = Math.floor(mins / 60);
+      if (hours < 24) return `Hôm nay lúc ${sent.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+      const yesterday = new Date();
+      yesterday.setDate(now.getDate() - 1);
+      if (sent.toLocaleDateString() === yesterday.toLocaleDateString()) return 'Hôm qua';
+
+      return sent.toLocaleString('vi-VN', {
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit'
+      });
+    },
+    toggleTime(id) {
+      if (this.showTimeMessages.has(id)) {
+        this.showTimeMessages.delete(id);
+      } else {
+        this.showTimeMessages.add(id);
+      }
     }
   }
 };
 </script>
-
-<style scoped>
-@keyframes fade-in-out {
-  0%, 100% {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  10%, 90% {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-fade-in-out {
-  animation: fade-in-out 3s ease forwards;
-}
-</style>

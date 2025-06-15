@@ -141,27 +141,36 @@ export default {
     },
 
     isWithinWorkingHours(time) {
-      if (!this.workingSchedules.length) return false;
+  // Nếu không chọn bác sĩ => cho đặt bất kỳ khung giờ nào
+  if (!this.selectedDoctor) return true;
 
-      // Tìm lịch làm việc của ngày selectedDate
-      const scheduleOfDay = this.workingSchedules.find(sch => sch.date.startsWith(this.selectedDate));
-      if (!scheduleOfDay) return false;
+  if (!this.workingSchedules.length) return false;
 
-      // Giả sử lịch làm việc có startTime và endTime dưới dạng "HH:mm"
-      const [hour, minute] = time.split(':').map(Number);
+  // Tìm lịch làm việc của ngày được chọn
+  const scheduleOfDay = this.workingSchedules.find(sch =>
+    sch.date.startsWith(this.selectedDate)
+  );
 
-      const start = scheduleOfDay.startTime || '08:00';
-      const end = scheduleOfDay.endTime || '17:00';
+  // Không có lịch => không cho đặt
+  if (!scheduleOfDay) return false;
 
-      const [startHour, startMinute] = start.split(':').map(Number);
-      const [endHour, endMinute] = end.split(':').map(Number);
+  // Nếu ngày nghỉ cả ngày => không cho đặt bất kỳ khung giờ nào
+  if (scheduleOfDay.isDayOff === true) return false;
 
-      const timeValue = hour * 60 + minute;
-      const startValue = startHour * 60 + startMinute;
-      const endValue = endHour * 60 + endMinute;
+  // Nếu không có giờ bắt đầu/kết thúc thì coi như nghỉ
+  if (!scheduleOfDay.startTime || !scheduleOfDay.endTime) return false;
 
-      return timeValue >= startValue && timeValue <= endValue;
-    },
+  // Kiểm tra xem thời gian có nằm trong khoảng làm việc không
+  const [hour, minute] = time.split(':').map(Number);
+  const [startHour, startMinute] = scheduleOfDay.startTime.split(':').map(Number);
+  const [endHour, endMinute] = scheduleOfDay.endTime.split(':').map(Number);
+
+  const timeValue = hour * 60 + minute;
+  const startValue = startHour * 60 + startMinute;
+  const endValue = endHour * 60 + endMinute;
+
+  return timeValue >= startValue && timeValue <= endValue;
+},
 
     isDisabled(time) {
       return this.isPastTime(time) || this.isBookedTime(time) || !this.isWithinWorkingHours(time);

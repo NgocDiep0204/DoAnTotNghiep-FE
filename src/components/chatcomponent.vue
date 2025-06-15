@@ -46,7 +46,10 @@
                 <strong>
                   {{ msg.senderId === senderId ? 'Bạn' : `Admin (${msg.senderId.slice(0, 4)}...)` }}:
                 </strong> {{ msg.text }}
-                <div class="text-xs text-gray-400 italic">({{ getStatusText(msg.status) }})</div>
+<div class="text-xs text-gray-400 italic">
+  ({{ getStatusText(msg.status) }})
+  <span v-if="msg.status !== 2"> - {{ formatSentAt(msg.sentAt) }}</span>
+</div>
               </div>
             </li>
           </ul>
@@ -213,6 +216,28 @@ async sendMessage() {
   } catch (err) {
     console.error('❌ Lỗi khi tải tin nhắn:', err);
   }
+},
+formatSentAt(datetime) {
+  const now = new Date();
+  const sent = new Date(datetime);
+  const diffInSeconds = Math.floor((now - sent) / 1000);
+
+  if (diffInSeconds < 60) {
+    return `${diffInSeconds} giây trước`;
+  }
+
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes} phút trước`;
+  }
+
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) {
+    return `${diffInHours} giờ trước`;
+  }
+
+  const diffInDays = Math.floor(diffInHours / 24);
+  return `${diffInDays} ngày trước`;
 }
 ,
     setupConnection(userId) {
